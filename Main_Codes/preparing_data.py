@@ -4,19 +4,27 @@ import pandas as pd
 import os
 from astropy.io import fits
 
-#we'll take one TCE per data set right now, but some generalisation is pending... or else stuff can get pretty bizarre
-#here we try to rebin the data... set up a fixed number of input nodes maybe? Lets take a ballpark number to start with,
-#say 1000 in global view 100 in local view?
-#empty bins is a major problem
+#final version of the bin code... after loads of modifications
+#problem? does not work for the false positives, if we at all wanna remove the tranist signature from them... if I figure that our, I'll put it
+#in here as a function.
 #shallue and vandenberg have normalised their LCs x-axis to 1. Good idea for the neural network, VERY BAD IDEA FOR THE FALSE POSITIVES.
 #thats why their false positives detections were so messed up...
+#the first function - rebin works for binning data and fps while the second one will remove the transit signature and then rebin.
 
+np.random.seed(12345)
+
+#feel free to change these globlal variables as per requirement.
 GLOBAL_VIEW=2000
 LOCAL_VIEW=200
+FILEPATH_FPS="F:\Masters Project Data\\alienworlds_fps\\"
+FILEPATH_DATA="F:\Masters Project Data\\alienworlds_data\\"
+
 def rebin(x,y,tr_dur,tr_pd):
+    #change relevant stuff to days format from hours format
     tr_dur=tr_dur/24
     tempx=[]
     tempy=[]
+    #remove Nan Values
     for i in range(0,len(y)):
         if(not np.isnan(y[i])):
             tempx.append(x[i])
@@ -25,17 +33,20 @@ def rebin(x,y,tr_dur,tr_pd):
     y=tempy
     df = pd.DataFrame(list(zip(x, y)),columns =['phase', 'flux'])
     
+    #create bins needed according to local and global view
     low=x[np.argmin(x)]
     high=x[np.argmax(x)]
     bins=np.linspace(low,high,GLOBAL_VIEW)
     bins_lc=np.linspace(-tr_dur,tr_dur,LOCAL_VIEW+1)
 
+    #median out the contents of a group
     groups = df.groupby(np.digitize(df['phase'], bins))
-    df_gl=groups.mean()
+    df_gl=groups.median()
     
     tot=pd.Series(np.arange(0,GLOBAL_VIEW))
     left=tot.index.difference(df_gl.index)
-    #print(left)
+  
+    #this is to fill up empty bins with values via interpolation.
     for el in left:
         if (el==0 or el==GLOBAL_VIEW): continue
         i=1
@@ -47,13 +58,14 @@ def rebin(x,y,tr_dur,tr_pd):
     df_gl=df_gl.sort_index(axis=0)
     df_gl['phase']=df_gl['phase']/tr_pd
 
+    #filter out the local view
     df_lc=df[(df["phase"] > -tr_dur) & (df["phase"] < tr_dur)]
     lc_groups = df_lc.groupby(np.digitize(df_lc['phase'], bins_lc))
-    df_lc_f=lc_groups.mean()
+    df_lc_f=lc_groups.median()
 
     tot=pd.Series(np.arange(0,LOCAL_VIEW))
     left=tot.index.difference(df_lc_f.index)
-    #print(left)
+
     for el in left:
         if (el==0 or el==LOCAL_VIEW): continue
         i=1
@@ -65,35 +77,87 @@ def rebin(x,y,tr_dur,tr_pd):
     df_lc_f=df_lc_f.sort_index(axis=0)
     df_lc_f['phase']=df_lc_f['phase']/tr_dur
 
-    #print(len(df_lc_f),len(df_gl))
-    #plt.plot(df_gl['phase'],df_gl['flux'],marker='.',ls='none')
-    #plt.plot(df_lc_f['phase'],df_lc_f['flux'],marker='.',ls='none')
-    #plt.xlim(-1,1)
     return (df_lc_f,df_gl)
 
+#define here a function for getting redidual LC...we'll take two approaches, one where we eliminate the transit from the final header file,
+#and the second where we process the statistic of the redidue... check if thats better. Eliminate transit works well but fails to bin fps, 
+#and i CANNOT FIGURE OUT FOR THE LIFE OF ME HOW THESE PEOPLE DETRENDED THE LC...
+def remove_rebin(x,y,tr_dur,tr_pd):
+    tr_dur=tr_dur/24
+    tempx=[]
+    tempy=[]
+    for i in range(0,len(y)):
+        if(not np.isnan(y[i])):
+            tempx.append(x[i])
+            tempy.append(y[i])
+    x=tempx
+    y=tempy
+    df = pd.DataFrame(list(zip(x, y)),columns =['phase', 'flux'])
 
-#rebin(phase2,flux2,hdu[4].header['TDUR'],hdu[4].header['TPERIOD'])
-#rebin(phase1,flux1,hdu[1].header['TDUR'],hdu[1].header['TPERIOD'])
+    low=x[np.argmin(x)]
+    high=x[np.argmax(x)]
+    count=0
+    for i in range(0,len(df)):
+        if (df['phase'].iloc[i]>-tr_dur*0.75 and df['phase'].iloc[i]<tr_dur*0.75):
+            df['flux'].iloc[i]=np.NaN
+            count+=1
+    clean=np.array([val for val in df['flux'] if not np.isnan(val)])
+    mean=np.mean(clean)
+    sigma=np.std(clean)
+    #print(mean,sigma,count)
+
+    noise=np.random.normal(mean,sigma,size=count)
+
+    j=0
+    for i in range(1,len(df)):
+        if (np.isnan(df['flux'].iloc[i])):
+            df['flux'].iloc[i]=noise[j]
+            j=j+1            
+    
+    bins=np.linspace(low,high,GLOBAL_VIEW)
+
+    groups = df.groupby(np.digitize(df['phase'], bins))
+    df_gl=groups.median()
+    
+    tot=pd.Series(np.arange(0,GLOBAL_VIEW))
+    left=tot.index.difference(df_gl.index)
+    for el in left:
+        if (el==0 or el==GLOBAL_VIEW): continue
+        i=1
+        while el-i in left or el+i in left:
+            if (el-i==0 or el+i==GLOBAL_VIEW): break
+            i=i+1
+        if (el-i==0 or el+i==GLOBAL_VIEW): continue
+        df_gl.loc[el]=[(df_gl.loc[el-i]['phase']+df_gl.loc[el+i]['phase'])/2,(df_gl.loc[el-i]['flux']+df_gl.loc[el+i]['flux'])/2]
+    df_gl=df_gl.sort_index(axis=0)
+    df_gl['phase']=df_gl['phase']/tr_pd
+    df_lc=df_gl.iloc[int(GLOBAL_VIEW/2-100):int(GLOBAL_VIEW/2+100)]
+    return(df_lc,df_gl)
 
 
-#in this section we run the loop for bringing sample out of database and write it into a matrix
-#this matrix is gonna be our training sample
-FILEPATH="F:\Masters Project Data\\alienworlds_fps\\"
-entries=os.scandir("F:\Masters Project Data\\alienworlds_fps\\")
-x=0
-for el in entries:
-    hdu = fits.open(FILEPATH+el.name)
-    n=len(hdu)
-    x=x+1
-    if(x==20): break
-    for i in range(1,n-1):
-        if(hdu[i].header['TDUR']==None or hdu[i].header['TPERIOD']==None): continue
-        phase=hdu[i].data['PHASE']
-        period=hdu[i].header['TPERIOD']
-        flux=hdu[i].data['LC_DETREND']
-        df_lc,df_gl=rebin(phase,flux,hdu[i].header['TDUR'],period)
-        df_lc.to_csv('fps_red/local/'+el.name[4:13]+'_'+str(i)+'_l',sep=' ',index=False)
-        df_gl.to_csv('fps_red/global/'+el.name[4:13]+'_'+str(i)+'_g',sep=' ',index=False)
-        print(x,len(df_gl),len(df_lc),el.name[4:13])
-        #print(hdu[1].header['TDUR'],hdu[1].header['TDEPTH'],hdu[1].header['TPERIOD'])
-        #print(hdu[2].header['TDUR'],hdu[2].header['TDEPTH'],hdu[1].header['TPERIOD'])
+#handy functionality to loop over whatever functions are needed to loop over.
+def extract(func,pathin,pathout,size):
+    dataset=os.scandir(pathin)
+    entries=list(dataset)
+    np.random.shuffle(entries)
+    x=0
+    for el in entries:
+        hdu = fits.open(pathin+el.name)
+        n=len(hdu)
+        x=x+1
+        if(x==size): break
+        for i in range(1,n-1):
+            if(hdu[i].header['TDUR']==None or hdu[i].header['TPERIOD']==None): continue
+            phase=hdu[i].data['PHASE']
+            period=hdu[i].header['TPERIOD']
+            flux=hdu[i].data['LC_DETREND']
+            df_lc,df_gl=func(phase,flux,hdu[i].header['TDUR'],period)
+            df_lc.to_csv(pathout+'/local/'+el.name[4:13]+'_'+str(i)+'_l',sep=' ',index=False)
+            df_gl.to_csv(pathout+'/global/'+el.name[4:13]+'_'+str(i)+'_g',sep=' ',index=False)
+            print(x,len(df_gl),len(df_lc),el.name[4:13])
+
+
+
+#here just call out the extract function with whatever values are needed...
+#extract(remove_rebin,FILEPATH_DATA,'nonpl_red',13)
+extract(remove_rebin,FILEPATH_DATA,'nonpl_red',1000)
