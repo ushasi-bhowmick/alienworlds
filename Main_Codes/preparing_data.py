@@ -135,6 +135,85 @@ def remove_rebin(x,y,tr_dur,tr_pd):
     return(df_lc,df_gl)
 
 
+#adding somewhat of a fix for the false positive scenario... no idea how well it works, but it might... also worried how computationally 
+#expensive it may turn out to be.
+def remove_rebin_fps(phase,flux,tdur,tperiod):
+    tempx=[]
+    tempy=[]
+    count=0
+    for i in range(0,len(flux)):
+        if(not np.isnan(flux[i])):
+            tempx.append(phase[i])
+            tempy.append(flux[i])
+        else: count+=1
+    tempx=np.array(tempx)
+    tempy=np.array(tempy)
+    low=tempx[np.argmin(tempx)]
+    high=tempx[np.argmax(tempx)]
+    medval=np.median(tempy)
+    sigma=np.std(tempy)
+    thres=medval-3*sigma
+
+    r_phase=[]
+    r_flux=[]
+    for i in range(0,len(tempy)):
+        if(flux[i]<thres):
+            r_phase.append(tempx[i])
+            r_flux.append(tempy[i])
+
+    df=pd.DataFrame(list(zip(r_phase, r_flux)),columns =['phase', 'flux'])
+    binsize=tperiod*24/tdur
+    bins=np.linspace(low,high,int(binsize))
+    groups = df.groupby(np.digitize(df['phase'], bins))
+    groupdat=groups.agg(['min', 'count'],axis=1)
+    removestuff=[]
+    for i in range(0,len(groupdat)):
+        if(groupdat['flux','count'].iloc[i]>5):
+            temp=groupdat['flux','min'].iloc[i]
+            index=np.where(tempy==temp)
+            removestuff.append(phase[index[0][0]])
+
+    removestuff.append(0)
+    for i in range(0,len(flux)):
+        for el in removestuff:
+            if (phase[i]>el-tdur*0.3 and phase[i]<el+tdur*0.3):
+                flux[i]=np.NaN
+                count+=1
+                break
+        
+    clean=np.array([val for val in flux if not np.isnan(val)])
+    if(len(clean)==0): return(pd.DataFrame(columns =['phase', 'flux']),pd.DataFrame(columns =['phase', 'flux']))
+    mean=np.mean(clean)
+    sigma=np.std(clean)
+    noise=np.random.normal(mean,sigma,size=count+10)
+    j=0
+    for i in range(0,len(flux)):
+        if (np.isnan(flux[i])):
+            flux[i]=noise[j]
+            j=j+1
+
+    bins=np.linspace(low,high,GLOBAL_VIEW)
+
+    df_n=pd.DataFrame(list(zip(phase, flux)),columns =['phase', 'flux'])
+    groups = df_n.groupby(np.digitize(df_n['phase'], bins))
+    df_gl=groups.median()
+    
+    tot=pd.Series(np.arange(0,GLOBAL_VIEW))
+    left=tot.index.difference(df_gl.index)
+    for el in left:
+        if (el==0 or el==GLOBAL_VIEW): continue
+        i=1
+        while el-i in left or el+i in left:
+            if (el-i==0 or el+i==GLOBAL_VIEW): break
+            i=i+1
+        if (el-i==0 or el+i==GLOBAL_VIEW): continue
+        df_gl.loc[el]=[(df_gl.loc[el-i]['phase']+df_gl.loc[el+i]['phase'])/2,(df_gl.loc[el-i]['flux']+df_gl.loc[el+i]['flux'])/2]
+    df_gl=df_gl.sort_index(axis=0)
+    df_gl['phase']=df_gl['phase']/tperiod
+    df_lc=df_gl.iloc[int(GLOBAL_VIEW/2-100):int(GLOBAL_VIEW/2+100)]
+    return(df_lc,df_gl)
+    
+
 #handy functionality to loop over whatever functions are needed to loop over.
 def extract(func,pathin,pathout,size):
     dataset=os.scandir(pathin)
@@ -150,7 +229,7 @@ def extract(func,pathin,pathout,size):
             if(hdu[i].header['TDUR']==None or hdu[i].header['TPERIOD']==None): continue
             phase=hdu[i].data['PHASE']
             period=hdu[i].header['TPERIOD']
-            flux=hdu[i].data['LC_DETREND']
+            flux=hdu [i].data['LC_DETREND']
             df_lc,df_gl=func(phase,flux,hdu[i].header['TDUR'],period)
             df_lc.to_csv(pathout+'/local/'+el.name[4:13]+'_'+str(i)+'_l',sep=' ',index=False)
             df_gl.to_csv(pathout+'/global/'+el.name[4:13]+'_'+str(i)+'_g',sep=' ',index=False)
@@ -160,4 +239,4 @@ def extract(func,pathin,pathout,size):
 
 #here just call out the extract function with whatever values are needed...
 #extract(remove_rebin,FILEPATH_DATA,'nonpl_red',13)
-extract(remove_rebin,FILEPATH_DATA,'nonpl_red',1000)
+extract(remove_rebin_fps,FILEPATH_FPS,'nonpl_fps_red',2000)
