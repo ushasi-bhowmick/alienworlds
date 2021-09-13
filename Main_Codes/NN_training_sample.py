@@ -265,24 +265,19 @@ def autovetter_labels(tot,bp):
     X_train=[]
     X_test=[]
     Y_train=[]
-    Y_trainO=[]
     Y_test=[]
-    Y_testO=[]
-    pl_entry=os.scandir('data_red/global')
-    fps_entry=os.scandir('fps_red/global')
+    pl_entry=os.scandir('temp_dir/global')
     av_entry=ascii.read('autovetter_label.tab')
     ref_kepid=av_entry['kepid']
     ref_kepid=get_strings(ref_kepid)
     ref_label=av_entry['av_training_set']
     pl_entry=list(pl_entry)
-    fps_entry=list(fps_entry)
 
     np.random.shuffle(pl_entry)
-    np.random.shuffle(fps_entry)
 
     i=0
     for el in list(pl_entry):
-        df=pd.read_csv('data_red/global/'+el.name,sep=" ")
+        df=pd.read_csv('temp_dir/global/'+el.name,sep=" ")
         if(len(df['flux'])<2000): continue
         try:
             loc=ref_kepid.index(el.name[0:9])
@@ -291,38 +286,14 @@ def autovetter_labels(tot,bp):
         if(ref_label[loc]=='UNK'): continue
         if(i>=bp):
             X_test.append(np.array(df['flux'].iloc[0:2000]))
-            Y_testO.append([1,0])
             if(ref_label[loc]=='PC'): Y_test.append([1,0])
             else: Y_test.append([0,1])
         else:
             X_train.append(np.array(df['flux'].iloc[0:2000]))
-            Y_trainO.append([1,0])
             if(ref_label[loc]=='PC'): Y_train.append([1,0])
             else: Y_train.append([0,1])
         i=i+1
         if(i==tot): break
-
-    j=0
-    for el in list(fps_entry):
-        df=pd.read_csv('fps_red/global/'+el.name,sep=" ")
-        if(len(df['flux'])<2000): continue
-        try:
-            loc=ref_kepid.index(el.name[0:9])
-        except ValueError as ve:
-            continue
-        if(ref_label[loc]=='UNK'): continue
-        if(j>=bp):
-            X_test.append(np.array(df['flux'].iloc[:2000],dtype='float32'))
-            Y_testO.append([0,1])
-            if(ref_label[loc]=='PC'): Y_test.append([1,0])
-            else: Y_test.append([0,1])
-        else:
-            X_train.append(np.array(df['flux'].iloc[:2000]))
-            Y_trainO.append([0,1])
-            if(ref_label[loc]=='PC'): Y_train.append([1,0])
-            else: Y_train.append([0,1])
-        j=j+1
-        if(j==tot): break 
 
     #print(np.array(X_train).shape,np.array(Y_train).shape)
     #print(np.array(X_test).shape,np.array(Y_test).shape)
@@ -332,8 +303,6 @@ def autovetter_labels(tot,bp):
     np.savetxt('training_data/Ytrain_av.csv', np.array(Y_train), delimiter=',')
     np.savetxt('training_data/Xtest_av.csv', np.array(X_test), delimiter=',')
     np.savetxt('training_data/Ytest_av.csv', np.array(Y_test), delimiter=',')
-    np.savetxt('training_data/YtestO_av.csv', np.array(Y_testO), delimiter=',')
-    np.savetxt('training_data/YtrainO_av.csv', np.array(Y_trainO), delimiter=',')
 
 def autovetter_robovetter_labels(tot,bp):
     X_train=[]
@@ -397,5 +366,241 @@ def autovetter_robovetter_labels(tot,bp):
     np.savetxt('training_data/YtestR_big.csv', np.array(Y_testR), delimiter=',')
     np.savetxt('training_data/YtestA_big.csv', np.array(Y_testA), delimiter=',')
     np.savetxt('training_data/YtrainA_big.csv', np.array(Y_trainA), delimiter=',')
+
+def cleaned_data_NN(tot,bp):
+    #cleanned data with autovetter labels for now, can be done with robovetter too
+    X_train=[]
+    X_trainl=[]
+    X_test=[]
+    X_testl=[]
+    Y_train=[]
+    Y_test=[]
+    pl_entry=os.listdir('temp_dir/global')
+    av_entry=ascii.read('autovetter_label.tab')
+    av_pl=np.array(av_entry['tce_plnt_num'])
+    ref_kepid=av_entry['kepid']
+    ref_kepid=get_strings(ref_kepid)
+    ref_label=av_entry['av_training_set']
+    pl_entry=list(pl_entry)
+
+    np.random.shuffle(pl_entry)
+
+    i=0
+    for el in list(pl_entry):
+        df=pd.read_csv('temp_dir/global/'+el,sep=" ")
+        dfl=pd.read_csv('temp_dir/local/'+el[0:11]+'_l',sep=" ")
+        if(len(df['flux'])<2000): continue
+        if(len(dfl['flux'])<200): continue
+        try:
+            loc=np.where(np.array(ref_kepid)==el[0:9])
+            loc_f=[m for m in loc[0] if str(av_pl[m])==el[-3]]
+        except ValueError as ve:
+            continue
+        if(len(loc_f)==0): continue
+        #the idea behind putting the zero is only coz loc_f is inherently a tuple... the way the alg is it will have only
+        #one element tho at all time.
+        if(ref_label[loc_f[0]]=='UNK'): continue
+        if(av_pl[loc_f[0]]!=1): continue
+
+        flux=df['flux'].iloc[0:2000]
+        fluxl=dfl['flux'].iloc[0:200]
+        #flux=flux-np.median(flux)
+        #flux=flux/np.abs(flux[np.argmin(flux)])
+        #fluxl=fluxl-np.median(fluxl)
+        #fluxl=fluxl/np.abs(fluxl[np.argmin(fluxl)])
+
+        if(i>=bp):
+            X_test.append(np.array(flux))
+            X_testl.append(np.array(fluxl))
+            if(ref_label[loc_f[0]]=='PC'): Y_test.append([1,0])
+            else: Y_test.append([0,1])
+        else:
+            X_train.append(np.array(flux))
+            X_trainl.append(np.array(fluxl))
+            if(ref_label[loc_f[0]]=='PC'): Y_train.append([1,0])
+            else: Y_train.append([0,1])
+        i=i+1
+        print(av_pl[loc_f[0]],print(len(flux),len(fluxl)))
+        if(i==tot): break
+
+    #print(np.array(X_train).shape,np.array(Y_train).shape)
+    #print(np.array(X_test).shape,np.array(Y_test).shape)
+    #print(Y_train,len(Y_train))
+    #print(Y_test,len(Y_test))
+    np.savetxt('training_data/Xtrain_av_clean.csv', np.array(X_train), delimiter=',')
+    np.savetxt('training_data/Ytrain_av_clean.csv', np.array(Y_train), delimiter=',')
+    np.savetxt('training_data/Xtrainloc_av_clean.csv', np.array(X_trainl), delimiter=',')
+    #np.savetxt('training_data/Xtest_av.csv', np.array(X_test), delimiter=',')
+    #np.savetxt('training_data/Ytest_av.csv', np.array(Y_test), delimiter=',')
+
+def raw_bins(tot,bp,pathin):
+    X_train=[]
+    X_test=[]
+    Y_train=[]
+    Y_test=[]
+    pl_entry=os.listdir(pathin)
+    av_entry=ascii.read('robovetter_label.dat')
+    eb_entry=ascii.read('eb_label.dat')
+    av_pl=np.array(av_entry['tce_plnt_num'])
+    ref_kepid=av_entry['kepid']
+    eb_kepid=eb_entry['kepid']
+    ref_kepid=get_strings(ref_kepid)
+    eb_kepid=np.array(get_strings(eb_kepid))
+    ref_label=av_entry['label']
+    pl_entry=list(pl_entry)
+
+    np.random.shuffle(pl_entry)
+
+    i=0
+    for el in list(pl_entry):
+        df=np.loadtxt(pathin+el)
+        try:
+            loc=np.where(np.array(ref_kepid)==el[0:9])
+            loc_f=[m for m in loc[0] if str(av_pl[m])=='1']
+        except ValueError as ve:
+            continue
+        if(len(loc_f)==0): continue
+        #the idea behind putting the zero is only coz loc_f is inherently a tuple... the way the alg is it will have only
+        #one element tho at all time.
+        if(ref_label[loc_f[0]]=='UNK'): continue
+        #if(av_pl[loc_f[0]]!=1): continue
+
+        if(len(df.shape)<2):    df=df.reshape(1,500)
+        if(len(df)<3): chosen_ind=np.arange(0,len(df),1)
+        else: chosen_ind=np.random.randint(0,len(df),size=3)
+        
+        #cleaner training samples?
+         
+        #med=[np.median(df[k]) for k in chosen_ind]
+        #std=[np.std(df[k]) for k in chosen_ind]
+        count_tr=[(df[k] < np.median(df[k])-2.5*np.std(df[k])).sum() for k in chosen_ind]
+        chosen_ind=np.delete(chosen_ind,np.where(np.array(count_tr)<7)[0])
+        if(len(chosen_ind)==0): continue
+
+        print(el[0:9],len(chosen_ind))
+    
+        if(i>=bp):
+            [ X_test.append(np.array(df[k])) for k in chosen_ind]
+            if(ref_label[loc_f[0]]=='CONFIRMED'): [Y_test.append([1,0,0]) for k in chosen_ind]
+            elif(np.any(eb_kepid==el[0:9])): [Y_test.append([0,0,1]) for k in chosen_ind]
+            elif(ref_label[loc_f[0]]=='FPS'): [Y_test.append([0,1,0]) for k in chosen_ind]
+            #else: [Y_test.append([0,1,0]) for k in chosen_ind]
+        else:
+            [ X_train.append(np.array(df[k])) for k in chosen_ind]
+            if(ref_label[loc_f[0]]=='CONFIRMED'): [Y_train.append([1,0,0]) for k in chosen_ind]
+            elif(np.any(eb_kepid==el[0:9])): [Y_train.append([0,0,1]) for k in chosen_ind]
+            elif(ref_label[loc_f[0]]=='FPS'): [Y_train.append([0,1,0]) for k in chosen_ind]
+            #else: [Y_train.append([0,1,0]) for k in chosen_ind]
+        i=i+1
+        if(i==tot): break
+
+    print(np.array(X_train).shape,np.array(Y_train).shape)
+    print(np.array(X_test).shape,np.array(Y_test).shape)
+
+    temp1=[]
+    temp2=[]
+    filtind=[i for i in range(0,len(Y_train)) if (Y_train[i]==np.array([1,0,0])).all()]
+    filtind2=[i for i in range(0,len(Y_train)) if (Y_train[i]==np.array([0,1,0])).all()]
+    filtindeb=[i for i in range(0,len(Y_train)) if (Y_train[i]==np.array([0,0,1])).all()]
+    print(len(filtind),len(filtind2),len(filtindeb)) 
+    #print(min(len(filtind[0]),len(filtind2[0])))
+    for i in range(0,min(len(filtind),len(filtind2),len(filtindeb))):
+        temp1.append(X_train[filtind[i]])
+        temp2.append(Y_train[filtind[i]])
+        temp1.append(X_train[filtind2[i]])
+        temp2.append(Y_train[filtind2[i]])
+        temp1.append(X_train[filtindeb[i]])
+        temp2.append(Y_train[filtindeb[i]])
+
+    print(np.array(temp1).shape,np.array(temp2).shape)
+    #print(Y_train,len(Y_train))
+    #print(Y_test,len(Y_test))
+    np.savetxt('training_data/Xtrain_rv_raw500_3.csv', np.array(temp1), delimiter=',')
+    np.savetxt('training_data/Ytrain_rv_raw500_3.csv', np.array(temp2), delimiter=',')
+    #np.savetxt('training_data/Xtest_av.csv', np.array(X_test), delimiter=',')
+    #np.savetxt('training_data/Ytest_av.csv', np.array(Y_test), delimiter=',')
+
+def raw_bins_2class(tot,bp,pathin):
+    X_train=[]
+    X_test=[]
+    Y_train=[]
+    Y_test=[]
+    pl_entry=os.listdir(pathin)
+    av_entry=ascii.read('autovetter_label.tab')
+    av_pl=np.array(av_entry['tce_plnt_num'])
+    ref_kepid=av_entry['kepid']
+    ref_kepid=get_strings(ref_kepid)
+    ref_label=av_entry['av_training_set']
+    pl_entry=list(pl_entry)
+
+    np.random.shuffle(pl_entry)
+
+    i=0
+    tab=0
+    for el in list(pl_entry):
+        df=np.loadtxt(pathin+el)
+        try:
+            loc=np.where(np.array(ref_kepid)==el[0:9])
+            loc_f=[m for m in loc[0] if str(av_pl[m])=='1']
+        except ValueError as ve:
+            continue
+        if(len(loc_f)==0): continue
+        #the idea behind putting the zero is only coz loc_f is inherently a tuple... the way the alg is it will have only
+        #one element tho at all time.
+        if(ref_label[loc_f[0]]=='UNK'): continue
+        #if(av_pl[loc_f[0]]!=1): continue
+
+        if(len(df.shape)<2):    df=df.reshape(1,200)
+        if(len(df)<5): chosen_ind=np.arange(0,len(df),1)
+        else: chosen_ind=np.random.randint(0,len(df),size=5)
+        
+        #cleaner training samples?
+         
+        #med=[np.median(df[k]) for k in chosen_ind]
+        #std=[np.std(df[k]) for k in chosen_ind]
+        count_tr=[(df[k] < np.median(df[k])-3*np.std(df[k])).sum() for k in chosen_ind]
+        chosen_ind=np.delete(chosen_ind,np.where(np.array(count_tr)<7)[0])
+        if(len(chosen_ind)==0): continue
+
+        print(el[0:9],len(chosen_ind))
+    
+        if(i>=bp):
+            [ X_test.append(np.array(df[k])) for k in chosen_ind]
+            if(ref_label[loc_f[0]]=='PC'): [Y_test.append([1,0]) for k in chosen_ind]
+            else: [Y_test.append([0,1]) for k in chosen_ind]
+            #elif(ref_label[loc_f[0]]=='FPS'): [Y_test.append([0,1]) for k in chosen_ind]
+            #else: [Y_test.append([0,1,0]) for k in chosen_ind]
+        else:
+            [ X_train.append(np.array(df[k])) for k in chosen_ind]
+            if(ref_label[loc_f[0]]=='PC'): [Y_train.append([1,0]) for k in chosen_ind]
+            else: [Y_train.append([0,1]) for k in chosen_ind]
+            #elif(ref_label[loc_f[0]]=='FPS'): [Y_train.append([0,1]) for k in chosen_ind]
+            #else: [Y_train.append([0,1,0]) for k in chosen_ind]
+        i=i+1
+        if(i==tot): break
+
+    print(np.array(X_train).shape,np.array(Y_train).shape)
+    print(np.array(X_test).shape,np.array(Y_test).shape)
+
+    temp1=[]
+    temp2=[]
+    filtind=[i for i in range(0,len(Y_train)) if (Y_train[i]==np.array([1,0])).all()]
+    filtind2=[i for i in range(0,len(Y_train)) if (Y_train[i]==np.array([0,1])).all()]
+    print(len(filtind),len(filtind2)) 
+    #print(min(len(filtind[0]),len(filtind2[0])))
+    for i in range(0,min(len(filtind),len(filtind2))):
+        temp1.append(X_train[filtind[i]])
+        temp2.append(Y_train[filtind[i]])
+        temp1.append(X_train[filtind2[i]])
+        temp2.append(Y_train[filtind2[i]])
+    print(np.array(temp1).shape,np.array(temp2).shape)
+    #print(Y_train,len(Y_train))
+    #print(Y_test,len(Y_test))
+    np.savetxt('training_data/Xtrain_av_raw200_2_3d0.csv', np.array(temp1), delimiter=',')
+    np.savetxt('training_data/Ytrain_av_raw200_2_3d0.csv', np.array(temp2), delimiter=',')
+    #np.savetxt('training_data/Xtest_av.csv', np.array(X_test), delimiter=',')
+    #np.savetxt('training_data/Ytest_av.csv', np.array(Y_test), delimiter=',')
+
 #global_view_nononpl(2100,2000)
-autovetter_robovetter_labels(5100,4500)
+#cleaned_data_NN(7000,6000)
+raw_bins_2class(6000,5000,'data_red_raw_dirty200/')
