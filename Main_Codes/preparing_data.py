@@ -1,5 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from numpy.core.defchararray import count
+from numpy.core.numeric import count_nonzero
 import pandas as pd
 import os
 from astropy.io import fits
@@ -16,8 +18,8 @@ np.random.seed(12345)
 #feel free to change these globlal variables as per requirement.
 GLOBAL_VIEW=2000
 LOCAL_VIEW=200
-FILEPATH_FPS="F:\Masters Project Data\\alienworlds_fps\\"
-FILEPATH_DATA="F:\Masters Project Data\\alienworlds_data\\"
+FILEPATH_FPS="F:\Masters_Project_Data\\alienworlds_fps\\"
+FILEPATH_DATA="F:\Masters_Project_Data\\alienworlds_data\\"
 
 def rebin(x,y,tr_dur,tr_pd):
     #change relevant stuff to days format from hours format
@@ -214,6 +216,96 @@ def remove_rebin_fps(phase,flux,tdur,tperiod):
     return(df_lc,df_gl)
     
 
+def get_transits_from_raw(binsize,pathin,pathout):
+    dataset=os.scandir(pathin)
+    entries=list(dataset)
+    np.random.shuffle(entries)
+    x=0
+    for el in entries:
+        hdu = fits.open(pathin+el.name)
+        flux=hdu[1].data['LC_DETREND']
+        x=x+1
+        if(x==2000): break
+        cuts=int(len(flux)/binsize)
+        lightcurve=[]
+        for val in range(0,cuts-1):
+            red_flux=flux[val*binsize:binsize*(val+1)]
+            count_nan=np.isnan(red_flux).sum()
+            if(count_nan/binsize > 0.2): continue
+
+            for i in range(0,len(red_flux)):
+                if(np.isnan(red_flux[i])):
+                    t=1
+                    try:
+                        while(np.isnan(red_flux[i-t]) or np.isnan(red_flux[i+t])):    
+                            if(i-t <0):
+                                red_flux[i]=red_flux[i+t]
+                                break
+                            if(i+t > binsize): 
+                                red_flux[i]=red_flux[i-t]
+                                break
+                            t+=1
+                        red_flux[i]=(red_flux[i-t]+red_flux[i+t])/2
+                    except:
+                        red_flux[i]=0
+            
+            med=np.median(red_flux)
+            std=np.std(red_flux)
+            count_tr=(red_flux < med-2*std).sum()
+            if(count_tr>5): lightcurve.append(red_flux)
+        if(len(lightcurve)==0): continue  
+        print(x,np.array(lightcurve).shape,el.name[4:13])
+        np.savetxt(pathout+el.name[4:13]+'.dat',lightcurve,delimiter=' ')
+
+def get_transits_from_raw_v2(binsize,pathin,pathout):
+    dataset=os.scandir(pathin)
+    entries=list(dataset)
+    np.random.shuffle(entries)
+    x=0
+    for el in entries:
+        hdu = fits.open(pathin+el.name)
+        flux=hdu[1].data['LC_WHITE']
+        phase=hdu[1].data['PHASE']
+        #if(x==10): break
+        ind_arr=[i for i in range(0,len(phase)-1) if phase[i]*phase[i-1]<0]
+        lightcurve=[]
+        for ind in ind_arr:
+            red_flux=flux[ind-int(binsize/2):ind+int(binsize/2)]
+            red_flux=np.array(red_flux)
+            count_nan=np.isnan(red_flux).sum()
+            if(count_nan/binsize > 0.2): continue
+
+            for i in range(0,len(red_flux)):
+                if(np.isnan(red_flux[i])):
+                    t=1
+                    try:
+                        while(np.isnan(red_flux[i-t]) or np.isnan(red_flux[i+t])):    
+                            if(i-t <0):
+                                red_flux[i]=red_flux[i+t]
+                                break
+                            if(i+t > binsize): 
+                                red_flux[i]=red_flux[i-t]
+                                break
+                            t+=1
+                        red_flux[i]=(red_flux[i-t]+red_flux[i+t])/2
+                    except:
+                        red_flux[i]=0
+            
+            if(len(red_flux)==binsize): 
+                med=np.median(red_flux)
+                std=np.std(red_flux)
+                count_tr=(red_flux < med-2*std).sum()
+                if(count_tr>7): lightcurve.append(red_flux)
+    
+        if(len(lightcurve)==0): 
+            print("miss:",el.name[4:13])
+            continue  
+        print("hit:",x,np.array(lightcurve).shape,el.name[4:13])
+        x=x+1 
+        np.savetxt(pathout+el.name[4:13]+'.dat',lightcurve,delimiter=' ')
+
+
+
 #handy functionality to loop over whatever functions are needed to loop over.
 def extract(func,pathin,pathout,size):
     dataset=os.scandir(pathin)
@@ -229,7 +321,7 @@ def extract(func,pathin,pathout,size):
             if(hdu[i].header['TDUR']==None or hdu[i].header['TPERIOD']==None): continue
             phase=hdu[i].data['PHASE']
             period=hdu[i].header['TPERIOD']
-            flux=hdu [i].data['LC_DETREND']
+            flux=hdu[i].data['LC_DETREND']
             df_lc,df_gl=func(phase,flux,hdu[i].header['TDUR'],period)
             df_lc.to_csv(pathout+'/local/'+el.name[4:13]+'_'+str(i)+'_l',sep=' ',index=False)
             df_gl.to_csv(pathout+'/global/'+el.name[4:13]+'_'+str(i)+'_g',sep=' ',index=False)
@@ -239,4 +331,6 @@ def extract(func,pathin,pathout,size):
 
 #here just call out the extract function with whatever values are needed...
 #extract(remove_rebin,FILEPATH_DATA,'nonpl_red',13)
-extract(remove_rebin_fps,FILEPATH_FPS,'nonpl_fps_red',2000)
+#extract(rebin,FILEPATH_FPS,'temp_dir',4000)
+get_transits_from_raw_v2(500,FILEPATH_DATA,"data_red_more_raw/") 
+ 
