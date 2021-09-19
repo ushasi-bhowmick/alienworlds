@@ -215,7 +215,7 @@ def remove_rebin_fps(phase,flux,tdur,tperiod):
     df_lc=df_gl.iloc[int(GLOBAL_VIEW/2-100):int(GLOBAL_VIEW/2+100)]
     return(df_lc,df_gl)
     
-
+#simply slice bins into a fixed binsize and obtain the cut LC
 def get_transits_from_raw(binsize,pathin,pathout):
     dataset=os.scandir(pathin)
     entries=list(dataset)
@@ -257,6 +257,7 @@ def get_transits_from_raw(binsize,pathin,pathout):
         print(x,np.array(lightcurve).shape,el.name[4:13])
         np.savetxt(pathout+el.name[4:13]+'.dat',lightcurve,delimiter=' ')
 
+#make cuts about phase zero and get 200... or whatever points around it.
 def get_transits_from_raw_v2(binsize,pathin,pathout):
     dataset=os.scandir(pathin)
     entries=list(dataset)
@@ -304,8 +305,141 @@ def get_transits_from_raw_v2(binsize,pathin,pathout):
         x=x+1 
         np.savetxt(pathout+el.name[4:13]+'.dat',lightcurve,delimiter=' ')
 
+#a more robust means to get data... right now the problem is incomplete light curves ... how do you expect to get data properly if you dont 
+#have the appropriate bins to work with ? Current perspective ... just grab a bunch of transits and detect FPS from there... but the
+#problem may not be that simple
+def get_transits_from_raw_v3(binsize,pathin,pathout):
+    dataset=os.scandir(pathin)
+    entries=list(dataset)
+    np.random.shuffle(entries)
+    x=0
+    for el in entries:
+        hdu = fits.open(pathin+el.name)
+        try:
+            impact=np.argmax(np.array([hdu[i].header['TDEPTH'] for i in range(1,len(hdu)-1) if hdu[i].header['TDEPTH']>0]))
+        except:
+            #impact=1
+            print("miss 1:",el.name[4:13])
+            continue
+        flux=hdu[impact+1].data['LC_DETREND']
+        phase=hdu[impact+1].data['PHASE']
+        #if(x==25): break
+        ind_arr=[i for i in range(0,len(phase)-1) if (phase[i]*phase[i-1]<0 and np.abs(phase[i]*phase[i-1])<0.0001)]
+        lightcurve=[]
+        for ind in ind_arr:
+            red_flux=flux[ind-int(binsize/2):ind+int(binsize/2)]
+            red_flux=np.array(red_flux)
+            count_nan=np.isnan(red_flux).sum()
+            if(count_nan/binsize > 0.2): continue
+
+            for i in range(0,len(red_flux)):
+                if(np.isnan(red_flux[i])):
+                    t=1
+                    try:
+                        while(np.isnan(red_flux[i-t]) or np.isnan(red_flux[i+t])):    
+                            if(i-t <0):
+                                red_flux[i]=red_flux[i+t]
+                                break
+                            if(i+t > binsize): 
+                                red_flux[i]=red_flux[i-t]
+                                break
+                            t+=1
+                        red_flux[i]=(red_flux[i-t]+red_flux[i+t])/2
+                    except:
+                        red_flux[i]=0
+            
+            if(len(red_flux)==binsize): 
+                med=np.median(red_flux)
+                std=np.std(red_flux)
+                cut=int(binsize/9)
+                count_tr=[(red_flux[int(k):int(k+cut)] < med-1.5*std).sum() for k in np.linspace(0,binsize-cut,cut)]
+                if(np.any(np.array(count_tr)>7)): lightcurve.append(red_flux)
+            
+            if(len(lightcurve)==20): break
+    
+        if(len(lightcurve)==0): 
+            print("miss:",el.name[4:13])
+            continue  
+        print("hit:",x,np.array(lightcurve).shape,el.name[4:13],impact+1,hdu[impact+1].header['TDEPTH'])
+        x=x+1 
+        np.savetxt(pathout+el.name[4:13]+'_'+str(impact+1)+'.dat',lightcurve,delimiter=' ')
 
 
+#use this to obtain three consecutive transit events from a target file... dont know how effective it is tho..
+def get_threesome_raw(pathin,pathout):
+    dataset=os.scandir(pathin)
+    entries=list(dataset)
+    np.random.shuffle(entries)
+    x=0
+    for el in entries:
+        hdu = fits.open(pathin+el.name)
+        flux=hdu[1].data['LC_DETREND']
+        phase=hdu[1].data['PHASE']
+        trdur=hdu[1].header['TDUR']
+        tpd=hdu[1].header['TPERIOD']
+        npixdur=int(trdur*2)
+        npix=int(tpd*24)
+        if(npix<1):
+            print("miss 1:",el.name[4:13])
+            continue
+
+        clean=np.array([val for val in flux if not np.isnan(val)])
+        med=np.median(clean)
+        std=np.std(clean)
+        #if(x==10): break
+        ind_arr=[i for i in range(0,len(phase)-1) if phase[i]*phase[i-1]<0]
+
+        val1=(flux[int(ind_arr[0]-npixdur*6):int(ind_arr[0]+npixdur*6)]<med-2*std).sum()
+        val2=(flux[int(ind_arr[1]-npixdur*6):int(ind_arr[1]+npixdur*6)]<med-2*std).sum()
+        if(val1>val2): flag=0
+        else: flag=1
+        cut=min(npixdur*6,npix*0.75)
+        lightcurve=[]
+        for i in range(flag,len(ind_arr),2):
+            
+            red_flux=flux[int(ind_arr[i]-cut):int(ind_arr[i]+cut)]
+            red_flux=np.array(red_flux)
+            count_nan=np.isnan(red_flux).sum()
+            if(len(red_flux)==0):
+                lightcurve=[]
+                continue
+            if(count_nan/len(red_flux) > 0.2): 
+                lightcurve=[]
+                continue
+
+            for i in range(0,len(red_flux)):
+                if(np.isnan(red_flux[i])):
+                    t=1
+                    try:
+                        while(np.isnan(red_flux[i-t]) or np.isnan(red_flux[i+t])):    
+                            if(i-t <0):
+                                red_flux[i]=red_flux[i+t]
+                                break
+                            if(i+t > npix*2): 
+                                red_flux[i]=red_flux[i-t]
+                                break
+                            t+=1
+                        red_flux[i]=(red_flux[i-t]+red_flux[i+t])/2
+                    except:
+                        red_flux[i]=0
+            
+                #count_tr=(red_flux[int(mp-npixdur*4):int(mp+npixdur*4)] < med-std).sum()
+            if(red_flux[np.argmin(red_flux)]<med-2*std): lightcurve.append(red_flux)
+                #if(count_tr>npixdur): lightcurve.append(red_flux)
+            else: lightcurve=[]
+            
+            if(len(lightcurve)==3): break
+    
+        if(len(lightcurve)<3): 
+            print("miss 2:",el.name[4:13])
+            continue  
+        print("hit:",x,np.array(lightcurve).shape,el.name[4:13])
+        x=x+1 
+        try:
+            np.savetxt(pathout+el.name[4:13]+'.dat',lightcurve,delimiter=' ')
+        except:
+            continue
+           
 #handy functionality to loop over whatever functions are needed to loop over.
 def extract(func,pathin,pathout,size):
     dataset=os.scandir(pathin)
@@ -321,7 +455,7 @@ def extract(func,pathin,pathout,size):
             if(hdu[i].header['TDUR']==None or hdu[i].header['TPERIOD']==None): continue
             phase=hdu[i].data['PHASE']
             period=hdu[i].header['TPERIOD']
-            flux=hdu[i].data['LC_DETREND']
+            flux=hdu[i].data['LC_DETREND'] 
             df_lc,df_gl=func(phase,flux,hdu[i].header['TDUR'],period)
             df_lc.to_csv(pathout+'/local/'+el.name[4:13]+'_'+str(i)+'_l',sep=' ',index=False)
             df_gl.to_csv(pathout+'/global/'+el.name[4:13]+'_'+str(i)+'_g',sep=' ',index=False)
@@ -332,5 +466,6 @@ def extract(func,pathin,pathout,size):
 #here just call out the extract function with whatever values are needed...
 #extract(remove_rebin,FILEPATH_DATA,'nonpl_red',13)
 #extract(rebin,FILEPATH_FPS,'temp_dir',4000)
-get_transits_from_raw_v2(500,FILEPATH_DATA,"data_red_more_raw/") 
- 
+#get_threesome_raw(FILEPATH_FPS,"data_prelim_stitch/") 
+get_transits_from_raw_v3(500,FILEPATH_DATA,'data_red_raw_dirty500/')
+   
