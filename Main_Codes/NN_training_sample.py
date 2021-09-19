@@ -1,4 +1,6 @@
-#get a training sample from the labeled directory structure. Consolidate stuff here
+#Story so far: We took in the downloaded data from preparing_data.py, now we have to consolidate it and all so that the final thing going into
+#NN is in fact a CSV file bearing the training sample- X and Y labels.
+from itertools import count
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -9,8 +11,10 @@ np.random.seed(122334)
 
 #these first three functions create training samples as per what we want PL, NPL, AFP for some various configurations
 
+#these extract only global view light curves from the planet transit. This means phase folded on the transit period and binned 
+#to a desired value. Right now its tuned to a three classifier thing, with planets, non planets and astrophysical false positives. Problematic 
+#labels
 def global_view(tot,bp):
-    #first we need to accumulate the data... we start off with a small NN... 2000 samples of global view? 500 from each?
     X_train=[]
     X_test=[]
     Y_train=[]
@@ -89,6 +93,8 @@ def global_view(tot,bp):
     np.savetxt('Xtest.csv', np.array(X_test), delimiter=',')
     np.savetxt('Ytest.csv', np.array(Y_test), delimiter=',')
 
+#if we want both global and local views, this is our thing. once again global view is phase folded to  transit period and local
+#view phase folded to transit duration. Function not recommended for use since labels are not done properly
 def local_global_view(tot,bp):
     #first we need to accumulate the data... we start off with a small NN... 2000 samples of global view? 500 from each?
     X_train_l=[]
@@ -186,6 +192,8 @@ def local_global_view(tot,bp):
     np.savetxt('Xtest2l.csv', np.array(X_test_l), delimiter=',')
     np.savetxt('Ytest2.csv', np.array(Y_test), delimiter=',')
 
+#this is only global view for a smaller problem... no non planets are included in this function, and classification is only for 
+#planets vs false positives. Function is not fit for use as the labels are not done properly
 def global_view_nononpl(tot,bp):
     #first we need to accumulate the data... we start off with a small NN... 2000 samples of global view? 500 from each?
     X_train=[]
@@ -261,6 +269,8 @@ def get_strings(ids):
         str_b.append(val)
     return(str_b)
 
+#this fixes the label issue by referencing autovetter labels from the catalog. much better and cleaner data now. This is a two classifier 
+#with only global view. Not recommended coz it has the issue of misplaced planet labels. 
 def autovetter_labels(tot,bp):
     X_train=[]
     X_test=[]
@@ -304,6 +314,7 @@ def autovetter_labels(tot,bp):
     np.savetxt('training_data/Xtest_av.csv', np.array(X_test), delimiter=',')
     np.savetxt('training_data/Ytest_av.csv', np.array(Y_test), delimiter=',')
 
+#this can create global view LC for both autovetter and robovetter labels. Misplaced label issue is solved
 def autovetter_robovetter_labels(tot,bp):
     X_train=[]
     X_test=[]
@@ -367,6 +378,7 @@ def autovetter_robovetter_labels(tot,bp):
     np.savetxt('training_data/YtestA_big.csv', np.array(Y_testA), delimiter=',')
     np.savetxt('training_data/YtrainA_big.csv', np.array(Y_trainA), delimiter=',')
 
+#this creates both local and global view LC for autovetter labels. This is called clean coz misplaced label issue is solved.
 def cleaned_data_NN(tot,bp):
     #cleanned data with autovetter labels for now, can be done with robovetter too
     X_train=[]
@@ -433,6 +445,8 @@ def cleaned_data_NN(tot,bp):
     #np.savetxt('training_data/Xtest_av.csv', np.array(X_test), delimiter=',')
     #np.savetxt('training_data/Ytest_av.csv', np.array(Y_test), delimiter=',')
 
+#Now begins creation of raw LC. Here we are randomly selecting a fixed number of examples from each data in the input directory. 
+#made for a three classifier problem: planets, false positives, eclipsing binaries. Also ensured dtaa is uniformly distributed in TS
 def raw_bins(tot,bp,pathin):
     X_train=[]
     X_test=[]
@@ -497,6 +511,11 @@ def raw_bins(tot,bp,pathin):
     print(np.array(X_train).shape,np.array(Y_train).shape)
     print(np.array(X_test).shape,np.array(Y_test).shape)
 
+    arr=np.arange(0,len(X_train),1)
+    np.random.shuffle(arr)
+    X_train=[X_train[p] for p in arr]
+    Y_train=[Y_train[p] for p in arr]
+
     temp1=[]
     temp2=[]
     filtind=[i for i in range(0,len(Y_train)) if (Y_train[i]==np.array([1,0,0])).all()]
@@ -520,7 +539,9 @@ def raw_bins(tot,bp,pathin):
     #np.savetxt('training_data/Xtest_av.csv', np.array(X_test), delimiter=',')
     #np.savetxt('training_data/Ytest_av.csv', np.array(Y_test), delimiter=',')
 
-def raw_bins_2class(tot,bp,pathin):
+#best func for raw LC. The random selection has been replaced by a comprehensive search through all the examples, and a cleaning routine 
+#added so we can get data of different levels of significance, according to our requirement
+def raw_bins_2class(tot,bp,pathin,max_ex):
     X_train=[]
     X_test=[]
     Y_train=[]
@@ -532,16 +553,13 @@ def raw_bins_2class(tot,bp,pathin):
     ref_kepid=get_strings(ref_kepid)
     ref_label=av_entry['av_training_set']
     pl_entry=list(pl_entry)
-
-    np.random.shuffle(pl_entry)
-
+    #np.random.shuffle(pl_entry)
     i=0
-    tab=0
     for el in list(pl_entry):
         df=np.loadtxt(pathin+el)
         try:
             loc=np.where(np.array(ref_kepid)==el[0:9])
-            loc_f=[m for m in loc[0] if str(av_pl[m])=='1']
+            loc_f=[m for m in loc[0] if str(av_pl[m])==el[10]]
         except ValueError as ve:
             continue
         if(len(loc_f)==0): continue
@@ -550,19 +568,21 @@ def raw_bins_2class(tot,bp,pathin):
         if(ref_label[loc_f[0]]=='UNK'): continue
         #if(av_pl[loc_f[0]]!=1): continue
 
-        if(len(df.shape)<2):    df=df.reshape(1,200)
-        if(len(df)<5): chosen_ind=np.arange(0,len(df),1)
-        else: chosen_ind=np.random.randint(0,len(df),size=5)
-        
+        if(len(df.shape)<2):    df=df.reshape(1,len(df))
+        chosen_ind=[]
+        #else: chosen_ind=np.random.randint(0,len(df),size=5)
+
+        for k in range(0,len(df)):
+            med=np.median(df[k])
+            std=np.std(df[k])
+            cut=int(len(df[k])/3)
+            count_tr=[(df[k,int(it):int(it+cut)] < med-1.7*std).sum() for it in np.linspace(0,len(df[k])-cut,cut)]
+            if(np.any(np.array(count_tr)>7)): chosen_ind.append(k)
+            if(len(chosen_ind)==max_ex): break
         #cleaner training samples?
-         
-        #med=[np.median(df[k]) for k in chosen_ind]
-        #std=[np.std(df[k]) for k in chosen_ind]
-        count_tr=[(df[k] < np.median(df[k])-3*np.std(df[k])).sum() for k in chosen_ind]
-        chosen_ind=np.delete(chosen_ind,np.where(np.array(count_tr)<7)[0])
         if(len(chosen_ind)==0): continue
 
-        print(el[0:9],len(chosen_ind))
+        print(i,el[0:9],len(chosen_ind))
     
         if(i>=bp):
             [ X_test.append(np.array(df[k])) for k in chosen_ind]
@@ -578,9 +598,14 @@ def raw_bins_2class(tot,bp,pathin):
             #else: [Y_train.append([0,1,0]) for k in chosen_ind]
         i=i+1
         if(i==tot): break
-
+    print("unique count:",i)
     print(np.array(X_train).shape,np.array(Y_train).shape)
     print(np.array(X_test).shape,np.array(Y_test).shape)
+
+    arr=np.arange(0,len(X_train),1)
+    np.random.shuffle(arr)
+    X_train=[X_train[p] for p in arr]
+    Y_train=[Y_train[p] for p in arr]
 
     temp1=[]
     temp2=[]
@@ -596,11 +621,54 @@ def raw_bins_2class(tot,bp,pathin):
     print(np.array(temp1).shape,np.array(temp2).shape)
     #print(Y_train,len(Y_train))
     #print(Y_test,len(Y_test))
-    np.savetxt('training_data/Xtrain_av_raw200_2_3d0.csv', np.array(temp1), delimiter=',')
-    np.savetxt('training_data/Ytrain_av_raw200_2_3d0.csv', np.array(temp2), delimiter=',')
+    np.savetxt('training_data/Xtrain_av_raw200_2_2d0_v2.csv', np.array(temp1), delimiter=',')
+    np.savetxt('training_data/Ytrain_av_raw200_2_2d0_v2.csv', np.array(temp2), delimiter=',')
     #np.savetxt('training_data/Xtest_av.csv', np.array(X_test), delimiter=',')
     #np.savetxt('training_data/Ytest_av.csv', np.array(Y_test), delimiter=',')
 
+#not a very useful function... thought of taking a bigger chunked LC and bring down the bins to create a smaller one instead of going through
+#the whole preparing the data thing. but it seems like a bad idea
+def bin_down_NN(pathinX,pathinY,bs):
+    TS=np.loadtxt(pathinX,delimiter=',')
+    label=np.loadtxt(pathinY,delimiter=',')
+    nTS=[]
+    nlabel=[]
+    l=len(TS[0])
+    print(TS.shape,label.shape)
+    for i in range(0,l):
+        nel=TS[i]
+        nlb_el=label[i]
+        nel=nel[int(l/2-bs/2):int(l/2+bs/2)]
+        count_tr=(nel < np.median(TS[i])-2*np.std(TS[i])).sum() 
+        if(count_tr<5): continue
+        nTS.append(nel)
+        nlabel.append(nlb_el)
+    nTS=np.array(nTS)
+    nlabel=np.array(nlabel)
+    print(nTS.shape,nlabel.shape)
+
+    temp1=[]
+    temp2=[]
+    filtind=[i for i in range(0,len(nlabel)) if (nlabel[i]==np.array([1,0])).all()]
+    filtind2=[i for i in range(0,len(nlabel)) if (nlabel[i]==np.array([0,1])).all()]
+    print(len(filtind),len(filtind2)) 
+    #print(min(len(filtind[0]),len(filtind2[0])))
+    for i in range(0,min(len(filtind),len(filtind2))):
+        temp1.append(nTS[filtind[i]])
+        temp2.append(nlabel[filtind[i]])
+        temp1.append(nTS[filtind2[i]])
+        temp2.append(nlabel[filtind2[i]])
+    print(np.array(temp1).shape,np.array(temp2).shape)
+    #print(Y_train,len(Y_train))
+    #print(Y_test,len(Y_test))
+    np.savetxt('training_data/Xtrain_av_raw100_2_2d5.csv', np.array(temp1), delimiter=',')
+    np.savetxt('training_data/Ytrain_av_raw100_2_2d5.csv', np.array(temp2), delimiter=',')
+
+        
+
+
+
 #global_view_nononpl(2100,2000)
 #cleaned_data_NN(7000,6000)
-raw_bins_2class(6000,5000,'data_red_raw_dirty200/')
+raw_bins_2class(6000,5000,'data_red_raw_dirty500/',5)
+#bin_down_NN('training_data/Xtrain_av_raw200_2_2d0.csv','training_data/Ytrain_av_raw200_2_2d0.csv',200)
