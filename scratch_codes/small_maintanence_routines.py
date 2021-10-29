@@ -62,5 +62,39 @@ def get_proper_labels_from_koi_table():
     data['label']=koi_label
     ascii.write(data,"robovetter_label.dat",overwrite=True)
 
-get_proper_labels_from_koi_table()
+def check_new_binary():
+    eb_entry=ascii.read('eb_label.dat')
+    av_entry=ascii.read('robovetter_label.dat')
+    kep_eb=[('00000'+str(el))[-9:] for el in eb_entry['kepid']]
+    kep_av=[('00000'+str(el))[-9:] for el in av_entry['kepid']]
+    print(kep_eb[0:10],kep_av[0:10])
+    i=0
+    for el in kep_eb:
+        print(np.where(np.array(kep_av)==el)[0],i)
+        i+=1
+
+def reorder_TS():
+    X_train=np.loadtxt('training_data/Xtrain_rv_raw500_3.csv',delimiter=',')
+    Y_train=np.loadtxt('training_data/Ytrain_rv_raw500_3.csv',delimiter=',') 
+    nY_train=[]
+    for el in Y_train:
+        if(el[0]==1): nY_train.append([1,0])
+        else: nY_train.append([0,1])
+
+    temp1=[]
+    temp2=[]
+    filtind=[i for i in range(0,len(nY_train)) if (nY_train[i]==np.array([1,0])).all()]
+    filtind2=[i for i in range(0,len(nY_train)) if (nY_train[i]==np.array([0,1])).all()]
+    print(len(filtind),len(filtind2)) 
+    #print(min(len(filtind[0]),len(filtind2[0])))
+    for i in range(0,min(len(filtind),len(filtind2))):
+        temp1.append(X_train[filtind[i]])
+        temp2.append(nY_train[filtind[i]])
+        temp1.append(X_train[filtind2[i]])
+        temp2.append(nY_train[filtind2[i]])
+    print(np.array(temp1).shape,np.array(temp2).shape)
+    np.savetxt('training_data/Xtrain_rv_raw500_2_temp.csv', np.array(temp1), delimiter=',')
+    np.savetxt('training_data/Ytrain_rv_raw500_2_temp.csv', np.array(temp2), delimiter=',')
+
+reorder_TS()
         

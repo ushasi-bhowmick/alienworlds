@@ -6,11 +6,13 @@ import pandas as pd
 data_pl= ascii.read("ex_kepler_id.dat")
 data_tce= ascii.read("ex_TCE_sum.tab")
 data_koi=ascii.read("ex_koi_id.tab")
-pl_entries=os.listdir("F:\Masters Project Data\\alienworlds_data\\")
-fps_entries=os.listdir("F:\Masters Project Data\\alienworlds_fps\\")
+pl_entries=os.listdir("F:\Masters_Project_Data\\alienworlds_data\\")
+fps_entries=os.listdir("F:\Masters_Project_Data\\alienworlds_fps\\")
+oth_entries=os.listdir("F:\Masters_Project_Data\\alienworlds_others\\")
 
 pl_entries=[el[4:13] for el in pl_entries]
 fps_entries=[el[4:13] for el in fps_entries]
+oth_entries=[el[4:13] for el in oth_entries]
 
 print('koitable',len(np.unique(data_koi)))
 #remove candidates
@@ -42,14 +44,16 @@ rem_pl=np.setdiff1d(koi_id_b, pl_entries)
 print('rempl',len(rem_pl))
 rem_pl=np.setdiff1d(rem_pl, fps_entries)
 print('remfps',len(rem_pl))
+rem_pl=np.setdiff1d(rem_pl, oth_entries)
 rem_pl_s=[el[:4] for el in rem_pl]
-print(rem_pl[:10])
+
+print(len(rem_pl))
 
 def download(i,f,str_b,str_s):
     for i in range(i,f):
         print(i)
         if(str_b[i]==str_b[i-1]): continue
-        #os.system("wget ftp://archive.stsci.edu/pub/kepler/dv_files/"+str_s[i]+"/"+str_b[i]+"/*.fits")
-        os.system('wget -r -nd --no-parent -erobots=off -A.fits https://archive.stsci.edu/pub/kepler/dv_files/'+str_s[i]+'/'+str_b[i])
+        os.system("wget ftp://archive.stsci.edu/pub/kepler/dv_files/"+str_s[i]+"/"+str_b[i]+"/*.fits")
+        #os.system('wget -r -nd --no-parent -erobots=off -A.fits https://archive.stsci.edu/pub/kepler/dv_files/'+str_s[i]+'/'+str_b[i])
 
-download(3100,3150,rem_pl,rem_pl_s)
+download(0,1700,rem_pl,rem_pl_s)
