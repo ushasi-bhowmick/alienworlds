@@ -314,6 +314,7 @@ def autovetter_labels(tot,bp):
     np.savetxt('training_data/Xtest_av.csv', np.array(X_test), delimiter=',')
     np.savetxt('training_data/Ytest_av.csv', np.array(Y_test), delimiter=',')
 
+
 #this can create global view LC for both autovetter and robovetter labels. Misplaced label issue is solved
 def autovetter_robovetter_labels(tot,bp):
     X_train=[]
@@ -387,20 +388,23 @@ def cleaned_data_NN(tot,bp):
     X_testl=[]
     Y_train=[]
     Y_test=[]
-    pl_entry=os.listdir('temp_dir/global')
-    av_entry=ascii.read('autovetter_label.tab')
+    pl_entry=os.listdir('new_loc_glob/global')
+    av_entry=ascii.read('robovetter_label.dat')
+    eb_entry=ascii.read('eb_label.dat')
+    eb_kepid=eb_entry['kepid']
+    eb_kepid=np.array(get_strings(eb_kepid))
     av_pl=np.array(av_entry['tce_plnt_num'])
     ref_kepid=av_entry['kepid']
     ref_kepid=get_strings(ref_kepid)
-    ref_label=av_entry['av_training_set']
+    ref_label=av_entry['label']
     pl_entry=list(pl_entry)
 
     np.random.shuffle(pl_entry)
 
     i=0
     for el in list(pl_entry):
-        df=pd.read_csv('temp_dir/global/'+el,sep=" ")
-        dfl=pd.read_csv('temp_dir/local/'+el[0:11]+'_l',sep=" ")
+        df=pd.read_csv('new_loc_glob/global/'+el,sep=" ")
+        dfl=pd.read_csv('new_loc_glob/local/'+el[0:11]+'_l',sep=" ")
         if(len(df['flux'])<2000): continue
         if(len(dfl['flux'])<200): continue
         try:
@@ -411,7 +415,7 @@ def cleaned_data_NN(tot,bp):
         if(len(loc_f)==0): continue
         #the idea behind putting the zero is only coz loc_f is inherently a tuple... the way the alg is it will have only
         #one element tho at all time.
-        if(ref_label[loc_f[0]]=='UNK'): continue
+        #if(ref_label[loc_f[0]]=='UNK'): continue
         if(av_pl[loc_f[0]]!=1): continue
 
         flux=df['flux'].iloc[0:2000]
@@ -422,32 +426,65 @@ def cleaned_data_NN(tot,bp):
         #fluxl=fluxl/np.abs(fluxl[np.argmin(fluxl)])
 
         if(i>=bp):
+            if(ref_label[loc_f[0]]=='CONFIRMED'): Y_test.append([1,0])
+            #elif(np.any(eb_kepid==el[0:9])):Y_test.append([0,0,1])
+            elif(ref_label[loc_f[0]]=='FPS'): Y_test.append([0,1])
+            else: continue
             X_test.append(np.array(flux))
             X_testl.append(np.array(fluxl))
-            if(ref_label[loc_f[0]]=='PC'): Y_test.append([1,0])
-            else: Y_test.append([0,1])
+            
         else:
+            if(ref_label[loc_f[0]]=='CONFIRMED'): Y_train.append([1,0])
+            #elif(np.any(eb_kepid==el[0:9])):Y_train.append([0,0,1])
+            elif(ref_label[loc_f[0]]=='FPS'): Y_train.append([0,1])
+            else: continue
             X_train.append(np.array(flux))
             X_trainl.append(np.array(fluxl))
-            if(ref_label[loc_f[0]]=='PC'): Y_train.append([1,0])
-            else: Y_train.append([0,1])
         i=i+1
-        print(av_pl[loc_f[0]],print(len(flux),len(fluxl)))
+        print(i,el[0:11],av_pl[loc_f[0]])
         if(i==tot): break
+
+    arr=np.arange(0,len(X_train),1)
+    np.random.shuffle(arr)
+    X_train=[X_train[p] for p in arr]
+    Y_train=[Y_train[p] for p in arr]
+    X_trainl=[X_trainl[p] for p in arr]
+
+    temp1=[]
+    temp2=[]
+    templ=[]
+    filtind=[i for i in range(0,len(Y_train)) if (Y_train[i]==np.array([1,0])).all()]
+    filtind2=[i for i in range(0,len(Y_train)) if (Y_train[i]==np.array([0,1])).all()]
+    #filtindeb=[i for i in range(0,len(Y_train)) if (Y_train[i]==np.array([0,0,1])).all()]
+    print(len(filtind),len(filtind2)) 
+    #print(min(len(filtind[0]),len(filtind2[0])))
+    
+    for i in range(0,min(len(filtind),len(filtind2))):
+        temp1.append(X_train[filtind[i]])
+        temp2.append(Y_train[filtind[i]])
+        templ.append(X_trainl[filtind[i]])
+        temp1.append(X_train[filtind2[i]])
+        temp2.append(Y_train[filtind2[i]])
+        templ.append(X_trainl[filtind2[i]])
+        #temp1.append(X_train[filtindeb[i]])
+        #temp2.append(Y_train[filtindeb[i]])
+        #templ.append(X_trainl[filtindeb[i]])
+
+    print(np.array(temp1).shape,np.array(temp2).shape)
 
     #print(np.array(X_train).shape,np.array(Y_train).shape)
     #print(np.array(X_test).shape,np.array(Y_test).shape)
     #print(Y_train,len(Y_train))
     #print(Y_test,len(Y_test))
-    np.savetxt('training_data/Xtrain_av_clean.csv', np.array(X_train), delimiter=',')
-    np.savetxt('training_data/Ytrain_av_clean.csv', np.array(Y_train), delimiter=',')
-    np.savetxt('training_data/Xtrainloc_av_clean.csv', np.array(X_trainl), delimiter=',')
+    np.savetxt('training_data/Xtrain_rv_clean_eq.csv', np.array(temp1), delimiter=',')
+    np.savetxt('training_data/Ytrain_rv_clean_eq.csv', np.array(temp2), delimiter=',')
+    np.savetxt('training_data/Xtrainloc_rv_clean_eq.csv', np.array(templ), delimiter=',')
     #np.savetxt('training_data/Xtest_av.csv', np.array(X_test), delimiter=',')
     #np.savetxt('training_data/Ytest_av.csv', np.array(Y_test), delimiter=',')
 
 #Now begins creation of raw LC. Here we are randomly selecting a fixed number of examples from each data in the input directory. 
 #made for a three classifier problem: planets, false positives, eclipsing binaries. Also ensured dtaa is uniformly distributed in TS
-def raw_bins(tot,bp,pathin):
+def raw_bins(tot,bp,pathin,max_ex,thres):
     X_train=[]
     X_test=[]
     Y_train=[]
@@ -465,12 +502,12 @@ def raw_bins(tot,bp,pathin):
 
     np.random.shuffle(pl_entry)
 
-    i=0
+    inc=0
     for el in list(pl_entry):
         df=np.loadtxt(pathin+el)
         try:
             loc=np.where(np.array(ref_kepid)==el[0:9])
-            loc_f=[m for m in loc[0] if str(av_pl[m])=='1']
+            loc_f=[m for m in loc[0] if str(av_pl[m])==el[10]]
         except ValueError as ve:
             continue
         if(len(loc_f)==0): continue
@@ -479,34 +516,42 @@ def raw_bins(tot,bp,pathin):
         if(ref_label[loc_f[0]]=='UNK'): continue
         #if(av_pl[loc_f[0]]!=1): continue
 
-        if(len(df.shape)<2):    df=df.reshape(1,500)
-        if(len(df)<3): chosen_ind=np.arange(0,len(df),1)
-        else: chosen_ind=np.random.randint(0,len(df),size=3)
-        
+        if(len(df.shape)<2):    df=df.reshape(1,len(df))
+        chosen_ind=[]
+        #else: chosen_ind=np.random.randint(0,len(df),size=5)
+
+        for k in range(0,len(df)):
+            med=np.median(df[k])
+            std=np.std(df[k])
+            cut=int(len(df[k])/3)
+            count_tr=[(df[k,int(it):int(it+cut)] < med-thres*std).sum() for it in np.linspace(0,len(df[k])-cut,cut)]
+            if(np.any(np.array(count_tr)>7)): chosen_ind.append(k)
+            if(len(chosen_ind)==max_ex): break
         #cleaner training samples?
-         
-        #med=[np.median(df[k]) for k in chosen_ind]
-        #std=[np.std(df[k]) for k in chosen_ind]
-        count_tr=[(df[k] < np.median(df[k])-2.5*np.std(df[k])).sum() for k in chosen_ind]
-        chosen_ind=np.delete(chosen_ind,np.where(np.array(count_tr)<7)[0])
         if(len(chosen_ind)==0): continue
 
-        print(el[0:9],len(chosen_ind))
+        print(inc,el[0:9],len(chosen_ind))
     
-        if(i>=bp):
-            [ X_test.append(np.array(df[k])) for k in chosen_ind]
+        if(inc>=bp):
+            check=np.array([len(df[k]) for k in chosen_ind])
+            if(np.any(check<2000)): continue 
             if(ref_label[loc_f[0]]=='CONFIRMED'): [Y_test.append([1,0,0]) for k in chosen_ind]
             elif(np.any(eb_kepid==el[0:9])): [Y_test.append([0,0,1]) for k in chosen_ind]
             elif(ref_label[loc_f[0]]=='FPS'): [Y_test.append([0,1,0]) for k in chosen_ind]
+            else: continue
+            [ X_test.append(np.array(df[k])) for k in chosen_ind]
             #else: [Y_test.append([0,1,0]) for k in chosen_ind]
         else:
-            [ X_train.append(np.array(df[k])) for k in chosen_ind]
+            check=np.array([len(df[k]) for k in chosen_ind])
+            if(np.any(check<2000)): continue 
             if(ref_label[loc_f[0]]=='CONFIRMED'): [Y_train.append([1,0,0]) for k in chosen_ind]
             elif(np.any(eb_kepid==el[0:9])): [Y_train.append([0,0,1]) for k in chosen_ind]
             elif(ref_label[loc_f[0]]=='FPS'): [Y_train.append([0,1,0]) for k in chosen_ind]
+            else: continue
+            [ X_train.append(np.array(df[k])) for k in chosen_ind]
             #else: [Y_train.append([0,1,0]) for k in chosen_ind]
-        i=i+1
-        if(i==tot): break
+        inc=inc+1
+        if(inc==tot): break
 
     print(np.array(X_train).shape,np.array(Y_train).shape)
     print(np.array(X_test).shape,np.array(Y_test).shape)
@@ -534,34 +579,43 @@ def raw_bins(tot,bp,pathin):
     print(np.array(temp1).shape,np.array(temp2).shape)
     #print(Y_train,len(Y_train))
     #print(Y_test,len(Y_test))
-    np.savetxt('training_data/Xtrain_rv_raw500_3.csv', np.array(temp1), delimiter=',')
-    np.savetxt('training_data/Ytrain_rv_raw500_3.csv', np.array(temp2), delimiter=',')
+    np.savetxt('training_data/Xtrain_rv_global.csv', np.array(temp1), delimiter=',')
+    np.savetxt('training_data/Ytrain_rv_global.csv', np.array(temp2), delimiter=',')
     #np.savetxt('training_data/Xtest_av.csv', np.array(X_test), delimiter=',')
     #np.savetxt('training_data/Ytest_av.csv', np.array(Y_test), delimiter=',')
 
 #best func for raw LC. The random selection has been replaced by a comprehensive search through all the examples, and a cleaning routine 
 #added so we can get data of different levels of significance, according to our requirement
-def raw_bins_2class(tot,bp,pathin,max_ex):
+def raw_bins_2class(tot,bp,pathin,max_ex,thres):
     X_train=[]
     X_test=[]
     Y_train=[]
     Y_test=[]
+    X_extra_tr=[]
+    X_extra_ts=[]
     pl_entry=os.listdir(pathin)
     av_entry=ascii.read('autovetter_label.tab')
+    extra_info=ascii.read('data_summary_2.dat')
+    tperiod=np.array(extra_info['transit_period'])
+    tdur=np.array(extra_info['transit_duration'])
+    tdepth=np.array(extra_info['transit_depth'])
+    tID=extra_info['ID']
     av_pl=np.array(av_entry['tce_plnt_num'])
     ref_kepid=av_entry['kepid']
     ref_kepid=get_strings(ref_kepid)
     ref_label=av_entry['av_training_set']
     pl_entry=list(pl_entry)
-    #np.random.shuffle(pl_entry)
+    np.random.shuffle(pl_entry)
     i=0
     for el in list(pl_entry):
         df=np.loadtxt(pathin+el)
         try:
             loc=np.where(np.array(ref_kepid)==el[0:9])
             loc_f=[m for m in loc[0] if str(av_pl[m])==el[10]]
+            #eloc=np.where(np.array(tID)==el[0:11])
         except ValueError as ve:
             continue
+        #if(len(loc_f)==0 or len(eloc[0])==0): continue
         if(len(loc_f)==0): continue
         #the idea behind putting the zero is only coz loc_f is inherently a tuple... the way the alg is it will have only
         #one element tho at all time.
@@ -573,11 +627,12 @@ def raw_bins_2class(tot,bp,pathin,max_ex):
         #else: chosen_ind=np.random.randint(0,len(df),size=5)
 
         for k in range(0,len(df)):
-            med=np.median(df[k])
-            std=np.std(df[k])
-            cut=int(len(df[k])/3)
-            count_tr=[(df[k,int(it):int(it+cut)] < med-1.7*std).sum() for it in np.linspace(0,len(df[k])-cut,cut)]
-            if(np.any(np.array(count_tr)>7)): chosen_ind.append(k)
+            #med=np.median(df[k])
+            #std=np.std(df[k])
+            #cut=int(len(df[k])/3)
+            #count_tr=[(df[k,int(it):int(it+cut)] < med-thres*std).sum() for it in np.linspace(0,len(df[k])-cut,cut)]
+            #if(np.any(np.array(count_tr)>7)): chosen_ind.append(k)
+            chosen_ind.append(k)
             if(len(chosen_ind)==max_ex): break
         #cleaner training samples?
         if(len(chosen_ind)==0): continue
@@ -585,13 +640,19 @@ def raw_bins_2class(tot,bp,pathin,max_ex):
         print(i,el[0:9],len(chosen_ind))
     
         if(i>=bp):
+            #check=[len(df[k]) for k in chosen_ind]
+            #if(np.any(check<2000)): continue 
             [ X_test.append(np.array(df[k])) for k in chosen_ind]
+            #[ X_extra_ts.append([tperiod[eloc[0][0]],tdur[eloc[0][0]],tdepth[eloc[0][0]]]) for k in chosen_ind]
             if(ref_label[loc_f[0]]=='PC'): [Y_test.append([1,0]) for k in chosen_ind]
             else: [Y_test.append([0,1]) for k in chosen_ind]
             #elif(ref_label[loc_f[0]]=='FPS'): [Y_test.append([0,1]) for k in chosen_ind]
             #else: [Y_test.append([0,1,0]) for k in chosen_ind]
         else:
+            #check=np.array([len(df[k]) for k in chosen_ind])
+            #if(np.any(check<2000)): continue 
             [ X_train.append(np.array(df[k])) for k in chosen_ind]
+            #[ X_extra_tr.append([tperiod[eloc[0][0]],tdur[eloc[0][0]],tdepth[eloc[0][0]]]) for k in chosen_ind]
             if(ref_label[loc_f[0]]=='PC'): [Y_train.append([1,0]) for k in chosen_ind]
             else: [Y_train.append([0,1]) for k in chosen_ind]
             #elif(ref_label[loc_f[0]]=='FPS'): [Y_train.append([0,1]) for k in chosen_ind]
@@ -601,30 +662,40 @@ def raw_bins_2class(tot,bp,pathin,max_ex):
     print("unique count:",i)
     print(np.array(X_train).shape,np.array(Y_train).shape)
     print(np.array(X_test).shape,np.array(Y_test).shape)
+    #print(np.array(X_extra_tr).shape,np.array(X_extra_ts).shape)
 
     arr=np.arange(0,len(X_train),1)
     np.random.shuffle(arr)
     X_train=[X_train[p] for p in arr]
     Y_train=[Y_train[p] for p in arr]
 
+    
     temp1=[]
     temp2=[]
+    temp3=[]
     filtind=[i for i in range(0,len(Y_train)) if (Y_train[i]==np.array([1,0])).all()]
     filtind2=[i for i in range(0,len(Y_train)) if (Y_train[i]==np.array([0,1])).all()]
     print(len(filtind),len(filtind2)) 
+    filtind=[i for i in range(0,len(Y_test)) if (Y_test[i]==np.array([1,0])).all()]
+    filtind2=[i for i in range(0,len(Y_test)) if (Y_test[i]==np.array([0,1])).all()]
+    print(len(filtind),len(filtind2)) 
+    '''
     #print(min(len(filtind[0]),len(filtind2[0])))
     for i in range(0,min(len(filtind),len(filtind2))):
         temp1.append(X_train[filtind[i]])
         temp2.append(Y_train[filtind[i]])
+        temp3.append(X_extra_tr[filtind[i]])
         temp1.append(X_train[filtind2[i]])
         temp2.append(Y_train[filtind2[i]])
-    print(np.array(temp1).shape,np.array(temp2).shape)
+        temp3.append(X_extra_tr[filtind2[i]])
+    print(np.array(temp1).shape,np.array(temp2).shape,np.array(temp3).shape)
     #print(Y_train,len(Y_train))
-    #print(Y_test,len(Y_test))
-    np.savetxt('training_data/Xtrain_av_raw200_2_2d0_v2.csv', np.array(temp1), delimiter=',')
-    np.savetxt('training_data/Ytrain_av_raw200_2_2d0_v2.csv', np.array(temp2), delimiter=',')
-    #np.savetxt('training_data/Xtest_av.csv', np.array(X_test), delimiter=',')
-    #np.savetxt('training_data/Ytest_av.csv', np.array(Y_test), delimiter=',')
+    #print(Y_test,len(Y_test))'''
+    np.savetxt('training_data/Xtrain_av_raw100.csv', np.array(X_train), delimiter=',')
+    np.savetxt('training_data/Ytrain_av_raw100.csv', np.array(Y_train), delimiter=',')
+    #np.savetxt('training_data/Xextra_av_unstitch.csv', np.array(temp3), delimiter=',')
+    np.savetxt('training_data/Xtest_av_raw100.csv', np.array(X_test), delimiter=',')
+    np.savetxt('training_data/Ytest_av_raw100.csv', np.array(Y_test), delimiter=',')
 
 #not a very useful function... thought of taking a bigger chunked LC and bring down the bins to create a smaller one instead of going through
 #the whole preparing the data thing. but it seems like a bad idea
@@ -665,10 +736,253 @@ def bin_down_NN(pathinX,pathinY,bs):
     np.savetxt('training_data/Ytrain_av_raw100_2_2d5.csv', np.array(temp2), delimiter=',')
 
         
+def raw_bins_2class_avg(tot,bp,pathin,max_ex,thres):
+    X_train=[]
+    X_test=[]
+    Y_train=[]
+    Y_test=[]
+    X_extra_tr=[]
+    X_extra_ts=[]
+    pl_entry=os.listdir(pathin)
+    av_entry=ascii.read('autovetter_label.tab')
+    extra_info=ascii.read('data_summary_2.dat')
+    tperiod=np.array(extra_info['transit_period'])
+    tdur=np.array(extra_info['transit_duration'])
+    tdepth=np.array(extra_info['transit_depth'])
+    tID=extra_info['ID']
+    av_pl=np.array(av_entry['tce_plnt_num'])
+    ref_kepid=av_entry['kepid']
+    ref_kepid=get_strings(ref_kepid)
+    ref_label=av_entry['av_training_set']
+    pl_entry=list(pl_entry)
+    #np.random.shuffle(pl_entry)
+    i=0
+    for el in list(pl_entry):
+        df=np.loadtxt(pathin+el)
+        try:
+            loc=np.where(np.array(ref_kepid)==el[0:9])
+            loc_f=[m for m in loc[0] if str(av_pl[m])==el[10]]
+            eloc=np.where(np.array(tID)==el[0:11])
+        except ValueError as ve:
+            continue
+        if(len(loc_f)==0 or len(eloc[0])==0): continue
+        #the idea behind putting the zero is only coz loc_f is inherently a tuple... the way the alg is it will have only
+        #one element tho at all time.
+        if(ref_label[loc_f[0]]=='UNK'): continue
+        #if(av_pl[loc_f[0]]!=1): continue
+
+        if(len(df.shape)<2):    df=df.reshape(1,len(df))
+        chosen_ind=[]
+        #else: chosen_ind=np.random.randint(0,len(df),size=5)
+
+        for k in range(0,len(df)):
+            med=np.median(df[k])
+            std=np.std(df[k])
+            cut=int(len(df[k])/3)
+            count_tr=[(df[k,int(it):int(it+cut)] < med-thres*std).sum() for it in np.linspace(0,len(df[k])-cut,cut)]
+            if(np.any(np.array(count_tr)>7)): chosen_ind.append(k)
+            if(len(chosen_ind)==max_ex): break
+        #cleaner training samples?
+        if(len(chosen_ind)==0): continue
+
+        print(i,el[0:9],len(chosen_ind),tperiod[eloc[0][0]])
+    
+        if(i>=bp):
+            temp=[np.array(df[k]) for k in chosen_ind]
+            temp=np.array(np.sum(np.array(temp),axis=0))/3
+            if(len(temp)!=2000): continue
+            X_test.append(temp)
+            X_extra_ts.append([tperiod[eloc[0][0]],tdur[eloc[0][0]],tdepth[eloc[0][0]]])
+            if(ref_label[loc_f[0]]=='PC'): Y_test.append([1,0]) 
+            else: Y_test.append([0,1]) 
+            #elif(ref_label[loc_f[0]]=='FPS'): [Y_test.append([0,1]) for k in chosen_ind]
+            #else: [Y_test.append([0,1,0]) for k in chosen_ind]
+        else:
+            temp=[np.array(df[k]) for k in chosen_ind]
+            #print(np.array(temp).shape,np.sum(np.array(temp),axis=0).shape)
+            temp=np.array(np.sum(np.array(temp),axis=0))/3
+            if(len(temp)!=2000): continue
+            X_train.append(temp)
+            X_extra_tr.append([tperiod[eloc[0][0]],tdur[eloc[0][0]],tdepth[eloc[0][0]]])
+            if(ref_label[loc_f[0]]=='PC'): Y_train.append([1,0])
+            else: Y_train.append([0,1]) 
+            #elif(ref_label[loc_f[0]]=='FPS'): [Y_train.append([0,1]) for k in chosen_ind]
+            #else: [Y_train.append([0,1,0]) for k in chosen_ind]
+        i=i+1
+        if(i==tot): break
+    print("unique count:",i)
+    print(np.array(X_train).shape,np.array(Y_train).shape)
+    #print(np.array(X_test).shape,np.array(Y_test).shape)
+    print(np.array(X_extra_tr).shape,np.array(X_extra_ts).shape)
+
+    arr=np.arange(0,len(X_train),1)
+    np.random.shuffle(arr)
+    X_train=[X_train[p] for p in arr]
+    Y_train=[Y_train[p] for p in arr]
+
+    temp1=[]
+    temp2=[]
+    temp3=[]
+    filtind=[i for i in range(0,len(Y_train)) if (Y_train[i]==np.array([1,0])).all()]
+    filtind2=[i for i in range(0,len(Y_train)) if (Y_train[i]==np.array([0,1])).all()]
+    print(len(filtind),len(filtind2)) 
+    #print(min(len(filtind[0]),len(filtind2[0])))
+    for i in range(0,min(len(filtind),len(filtind2))):
+        temp1.append(X_train[filtind[i]])
+        temp2.append(Y_train[filtind[i]])
+        temp3.append(X_extra_tr[filtind[i]])
+        temp1.append(X_train[filtind2[i]])
+        temp2.append(Y_train[filtind2[i]])
+        temp3.append(X_extra_tr[filtind2[i]])
+    print(np.array(temp1).shape,np.array(temp2).shape,np.array(temp3).shape)
+    #print(Y_train,len(Y_train))
+    #print(Y_test,len(Y_test))
+    np.savetxt('training_data/Xtrain_av_stitch.csv', np.array(temp1), delimiter=',')
+    np.savetxt('training_data/Ytrain_av_stitch.csv', np.array(temp2), delimiter=',')
+    np.savetxt('training_data/Xextra_av_stitch.csv', np.array(temp3), delimiter=',')
+    #np.savetxt('training_data/Xtest_av.csv', np.array(X_test), delimiter=',')
+    #np.savetxt('training_data/Ytest_av.csv', np.array(Y_test), delimiter=',')
+
+def raw_bins_rebinned(tot,pathin):
+    X_train=[]
+    Y_train=[]
+    pl_entry=os.listdir(pathin)
+    av_entry=ascii.read('autovetter_label.tab')
+    av_pl=np.array(av_entry['tce_plnt_num'])
+    ref_kepid=av_entry['kepid']
+    ref_kepid=get_strings(ref_kepid)
+    ref_label=av_entry['av_training_set']
+    i=0
+    for el in list(pl_entry):
+        df=np.loadtxt(pathin+el)
+        try:
+            loc=np.where(np.array(ref_kepid)==el[0:9])
+            loc_f=[m for m in loc[0] if str(av_pl[m])==el[10]]
+        except ValueError as ve:
+            continue
+        if(len(loc_f)==0): continue
+        #the idea behind putting the zero is only coz loc_f is inherently a tuple... the way the alg is it will have only
+        #one element tho at all time.
+        if(ref_label[loc_f[0]]=='UNK'): continue
+    
+        X_train.append(df)
+        if(ref_label[loc_f[0]]=='PC'): Y_train.append([1,0])
+        else: Y_train.append([0,1]) 
+        i=i+1
+        if(i==tot): break
+    print("unique count:",i)
+    print(np.array(X_train).shape,np.array(Y_train).shape)
+
+    arr=np.arange(0,len(X_train),1)
+    np.random.shuffle(arr)
+    X_train=[X_train[p] for p in arr]
+    Y_train=[Y_train[p] for p in arr]
+
+    np.savetxt('training_data/Xtrain_av_reb_raw.csv', np.array(X_train), delimiter=',')
+    np.savetxt('training_data/Ytrain_av_reb_raw.csv', np.array(Y_train), delimiter=',')
 
 
+def remove_sig(arr):
+    mid=np.median(arr)
+    std=np.std(arr)
+    count=np.asarray(arr<mid-1.5*std).sum()
+    ran = np.random.normal(mid,std,size=count)
+    i=0
+    ind=np.where(arr<mid-1.5*std)[0]
+    for i in range(0,len(ind)): arr[ind[i]]=ran[i]
+    return arr
+
+
+def TS_out_of_new_bins(tot,bp,pathin):
+    Xtrain=[]
+    Ytrain=[]
+    Xtest=[]
+    Ytest=[]
+    entries=os.listdir(pathin+'xlabel/')
+    np.random.shuffle(entries)
+    top=20
+    count=0
+    for el in entries:
+        data=np.loadtxt(pathin+'xlabel/'+el)
+        labels=np.loadtxt(pathin+'ylabel/'+el)
+        #print(data.shape,labels.shape)
+        background=np.array([i for i in range(0,len(labels)) if (labels[i]==np.array([0,0,1])).all()])
+        foreground=np.setdiff1d(np.arange(0,len(labels)), background)
+        minority=min(len(background),len(foreground))
+
+        if(len(foreground)<2): 
+            print('no suitable transits:',el[0:9])
+            continue
+
+        foreground=np.array(foreground)
+        background=np.array(background)
+        tracker=0
+        if(count<bp):
+            for i in range(minority):
+                #print(len(data[foreground[i]]),len(data[background[i]]),len(labels[foreground[i]]),len(labels[background[i]]))
+                
+                Xtrain.append(data[foreground[i]])
+                #Xtrain.append(remove_sig(data[foreground[i]]))
+                Xtrain.append(data[background[i]])
+                Ytrain.append(labels[foreground[i]])
+                Ytrain.append(labels[background[i]])
+                tracker+=2
+                if(i==top): break
+            if(minority<len(foreground) and minority<top):
+                for i in range(minority,len(foreground)):
+                    try: 
+                        x=len(data[foreground[i]])
+                        y=len(labels[foreground[i]])
+                    except: continue
+                    Xtrain.append(data[foreground[i]])
+                    Ytrain.append(labels[foreground[i]])
+                    tracker+=1
+                    if(i==top): break
+
+        else:
+            for i in range(minority):
+                Xtest.append(data[foreground[i]])
+                Xtest.append(data[background[i]])
+                #Xtest.append(remove_sig(data[foreground[i]]))
+                Ytest.append(labels[foreground[i]])
+                Ytest.append(labels[background[i]])
+                tracker+=2
+                if(i==top): break
+            if(minority<len(foreground) and minority<top):
+                for i in range(minority,len(foreground)):
+                    try: 
+                        x=len(data[foreground[i]])
+                        y=len(labels[foreground[i]])
+                    except: continue
+                    Xtest.append(data[foreground[i]])
+                    Ytest.append(labels[foreground[i]])
+                    tracker+=1
+                    if(i==top): break
+        
+        count+=1
+        print(count,el[0:9],len(foreground),len(background),tracker)
+        if(count==tot): break
+
+    print(np.array(Xtrain).shape, np.array(Ytrain).shape)
+    print(np.array(Xtest).shape, np.array(Ytest).shape)
+
+    filtind=[i for i in range(0,len(Ytrain)) if (Ytrain[i]==np.array([1,0,0])).all()]
+    filtind2=[i for i in range(0,len(Ytrain)) if (Ytrain[i]==np.array([0,1,0])).all()]
+    filtind3=[i for i in range(0,len(Ytrain)) if (Ytrain[i]==np.array([0,0,1])).all()]
+    print(len(filtind),len(filtind2),len(filtind3))
+    filtind=[i for i in range(0,len(Ytest)) if (Ytest[i]==np.array([1,0,0])).all()]
+    filtind2=[i for i in range(0,len(Ytest)) if (Ytest[i]==np.array([0,1,0])).all()]
+    filtind3=[i for i in range(0,len(Ytest)) if (Ytest[i]==np.array([0,0,1])).all()]
+    print(len(filtind),len(filtind2),len(filtind3))
+
+    np.savetxt('training_data/Xtrain_av_raw500.csv', np.array(Xtrain), delimiter=',')
+    np.savetxt('training_data/Ytrain_av_raw500.csv', np.array(Ytrain), delimiter=',')
+    np.savetxt('training_data/Xtest_av_raw500.csv', np.array(Xtest), delimiter=',')
+    np.savetxt('training_data/Ytest_av_raw500.csv', np.array(Ytest), delimiter=',')
 
 #global_view_nononpl(2100,2000)
-#cleaned_data_NN(7000,6000)
-raw_bins_2class(6000,5000,'data_red_raw_dirty500/',5)
+#cleaned_data_NN(8000,7500)
+#raw_bins(6000,5000,'temp_dir/global/',3,1.2)
+TS_out_of_new_bins(6400,5400,'data_red_raw_dirty500/')
 #bin_down_NN('training_data/Xtrain_av_raw200_2_2d0.csv','training_data/Ytrain_av_raw200_2_2d0.csv',200)
+#raw_bins_rebinned(4000,'raw_rebin2000/')
