@@ -30,3 +30,5 @@ Three architectures are explored that show promising results:
 1. CNN with local and global view input on phase folded LC
 2. VAE with raw input
 3. A take on the Inception-Resnet Module with raw input
+4. A not so good attempt at RNN
+5. Fairly good answers with a semantic segmentation approach
