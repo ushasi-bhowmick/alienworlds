@@ -7,9 +7,11 @@ from astropy.table import Table
 FILEPATH_IP_G="C:\\Users\\ushas\\Documents\\nonpl_fps_red2\\global\\"
 FILEPATH_IP_L="C:\\Users\\ushas\\Documents\\nonpl_fps_red2\\local\\"
 FILEPATH_OP="C:\\Users\\ushas\\Documents\\trash_rebins\\npl_fps\\"
-FILEPATH_RAW_PL="F:\Masters_Project_Data\\alienworlds_data\\"
-FILEPATH_RAW_FPS="F:\Masters_Project_Data\\alienworlds_fps\\"
-FILEPATH_RAW_OTH="F:\Masters_Project_Data\\alienworlds_others\\"
+FILEPATH_RAW_PL="E:\Masters_Project_Data\\alienworlds_pl\\"
+FILEPATH_RAW_DATA="E:\Masters_Project_Data\\alienworlds_data\\"
+FILEPATH_RAW_FPS="E:\Masters_Project_Data\\alienworlds_fps\\"
+FILEPATH_RAW_OTH="E:\Masters_Project_Data\\alienworlds_others\\"
+FILEPATH_RAW_CD="E:\Masters_Project_Data\\alienworlds_cd\\"
 
 def shift_baddata_elsewhere_g():
     entries_g=os.scandir(FILEPATH_IP_G)
@@ -30,20 +32,27 @@ def trim_off_longer_samples():
         print(len(y))
 
 def move_doubtful_files_elsewhere():
-    ref=ascii.read("ex_koi_id.tab")
+    ref=ascii.read("../../Catalogs/ex_koi_id.tab")
     koi_kepid=[('00000'+str(el))[-9:] for el in ref['kepid']]
-    direct=os.listdir(FILEPATH_RAW_FPS)
+    direct=os.listdir(FILEPATH_RAW_DATA)
     dir_kepid=[el[4:13] for el in direct]
 
     for stuff in direct:
         try:
             ind=koi_kepid.index(stuff[4:13])
             if(ref['koi_disposition'][ind] == 'CONFIRMED'):
-                print(stuff,"move "+FILEPATH_RAW_FPS+stuff+" "+FILEPATH_RAW_PL)
-                os.system("move "+FILEPATH_RAW_FPS+stuff+" "+FILEPATH_RAW_PL)
+                #print(stuff,"move "+FILEPATH_RAW_FPS+stuff+" "+FILEPATH_RAW_PL)
+                print("pl:",stuff)
+                os.system("move "+FILEPATH_RAW_DATA+stuff+" "+FILEPATH_RAW_PL)
+            if(ref['koi_disposition'][ind] == 'FALSE POSITIVE'):
+                print("fps:",stuff)
+                os.system("move "+FILEPATH_RAW_DATA+stuff+" "+FILEPATH_RAW_FPS)
+            if(ref['koi_disposition'][ind] == 'CANDIDATE'):
+                print("cd:",stuff)
+                os.system("move "+FILEPATH_RAW_DATA+stuff+" "+FILEPATH_RAW_CD)
         except:
             print("not:", stuff)
-            os.system("move "+FILEPATH_RAW_FPS+stuff+" "+FILEPATH_RAW_OTH)
+            os.system("move "+FILEPATH_RAW_DATA+stuff+" "+FILEPATH_RAW_OTH)
     
 def get_proper_labels_from_koi_table():
     ref=ascii.read("ex_koi_id.tab")
@@ -96,5 +105,6 @@ def reorder_TS():
     np.savetxt('training_data/Xtrain_rv_raw500_2_temp.csv', np.array(temp1), delimiter=',')
     np.savetxt('training_data/Ytrain_rv_raw500_2_temp.csv', np.array(temp2), delimiter=',')
 
-reorder_TS()
+#reorder_TS()
+move_doubtful_files_elsewhere()
         

@@ -3,25 +3,27 @@ import os
 from astropy.io import ascii
 import pandas as pd
 
-data_pl= ascii.read("ex_kepler_id.dat")
-data_tce= ascii.read("ex_TCE_sum.tab")
-data_koi=ascii.read("ex_koi_id.tab")
-pl_entries=os.listdir("F:\Masters_Project_Data\\alienworlds_data\\")
-fps_entries=os.listdir("F:\Masters_Project_Data\\alienworlds_fps\\")
-oth_entries=os.listdir("F:\Masters_Project_Data\\alienworlds_others\\")
+data_pl= ascii.read("../../Catalogs/ex_kepler_id.dat")
+data_tce= ascii.read("../../Catalogs/ex_TCE_sum.tab")
+data_koi=ascii.read("../../Catalogs/ex_koi_id.tab")
+pl_entries=os.listdir("E:\Masters_Project_Data\\alienworlds_pl\\")
+fps_entries=os.listdir("E:\Masters_Project_Data\\alienworlds_fps\\")
+oth_entries=os.listdir("E:\Masters_Project_Data\\alienworlds_others\\")
+temp_entries=os.listdir("E:\Masters_Project_Data\\alienworlds_data\\")
 
-pl_entries=[el[4:13] for el in pl_entries]
-fps_entries=[el[4:13] for el in fps_entries]
-oth_entries=[el[4:13] for el in oth_entries]
+pl_entries=np.unique(np.asarray([el[4:13] for el in pl_entries]))
+fps_entries=np.unique(np.asarray([el[4:13] for el in fps_entries]))
+oth_entries=np.unique(np.asarray([el[4:13] for el in oth_entries]))
+temp_entries=np.unique(np.asarray([el[4:13] for el in temp_entries]))
 
-print('koitable',len(np.unique(data_koi)))
+print('koitable',len(np.unique(data_koi)),len(pl_entries))
 #remove candidates
 idarr=[]
 for i in range(0,len(data_koi['kepid'])):
-    if(data_koi['koi_disposition'][i] != 'CANDIDATE'):
+    if(data_koi['koi_disposition'][i] == 'CANDIDATE'):
         idarr.append(data_koi['kepid'][i])
 
-print('plfps',len(np.unique(idarr)))
+print('plfps',len(np.unique(idarr)),len(idarr))
 
 def get_strings(ids):
     str_s=[]
@@ -45,15 +47,18 @@ print('rempl',len(rem_pl))
 rem_pl=np.setdiff1d(rem_pl, fps_entries)
 print('remfps',len(rem_pl))
 rem_pl=np.setdiff1d(rem_pl, oth_entries)
+print('remrem',len(rem_pl))
+rem_pl=np.setdiff1d(rem_pl, temp_entries)
 rem_pl_s=[el[:4] for el in rem_pl]
 
-print(len(rem_pl))
+print("new:",len(rem_pl))
 
 def download(i,f,str_b,str_s):
     for i in range(i,f):
         print(i)
         if(str_b[i]==str_b[i-1]): continue
-        os.system("wget ftp://archive.stsci.edu/pub/kepler/dv_files/"+str_s[i]+"/"+str_b[i]+"/*.fits")
+        #os.system("wget ftp://archive.stsci.edu/pub/kepler/dv_files/"+str_s[i]+"/"+str_b[i]+"/*.fits")
         #os.system('wget -r -nd --no-parent -erobots=off -A.fits https://archive.stsci.edu/pub/kepler/dv_files/'+str_s[i]+'/'+str_b[i])
+        os.system('wget -r -nd --no-parent --wait 1 --no-clobber -erobots=off -A.fits https://archive.stsci.edu/pub/kepler/dv_files/'+str_s[i]+'/'+str_b[i]+'/')
 
-download(0,1700,rem_pl,rem_pl_s)
+download(0,436,rem_pl,rem_pl_s)
