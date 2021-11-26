@@ -101,7 +101,7 @@ def gen_read_feature(content, feature_map, data_type,fin_type):
 def read_tfr_record(filename, feature_map, data_type, fin_type):
     tfr_dataset = tf.data.TFRecordDataset([filename]) 
     dataset = tfr_dataset.map(lambda x: gen_read_feature(x, feature_map, data_type, fin_type))
-    print(dataset)
+    #print(dataset)
     output = []
     for el in dataset:
        output.append(el)
@@ -117,13 +117,21 @@ def read_tfr_record(filename, feature_map, data_type, fin_type):
     return(output2)
 
 # this function call will extract the data from the results directory
-ip,tp,pp,sm,ss,plp,fpsp = read_tfr_record('../../processed_directories/expand_test_result/001026133',
+# this function call will extract the data from the results directory
+# [1,0,0]: pl, [0,1,0]:fps, [0,0,1]:bkg
+# scaled = (observed - median) / (std - median )
+'''ip,tp,pp,sm,ss,plp,fpsp = read_tfr_record('../../processed_directories/expand_test_result/001026133',
     ['input','true_map','pred_map','scale_median','scale_std','pl_peaks','fps_peaks'],
     ['ar','ar','ar','fl','fl','ar','ar'], 
     [tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.int16, tf.int16])
 
+tp =np.reshape(tp,(len(tp),4000,3))
+tot_tp=np.concatenate(tp, axis=0)
+
+if(tot_tp[:,0].sum()>0): #planet
+
 #an example function to write a tfr record.
 write_tfr_record('testthecode',[[32.5,[3,3,3]],[22.66,[2,2,2]],[333.4,[8,8,8]]],
-    ['id1','id2'],['fl','ar'],['float32','int8'])
+    ['id1','id2'],['fl','ar'],['float32','int8'])'''
 
 
