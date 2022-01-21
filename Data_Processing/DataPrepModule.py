@@ -85,20 +85,26 @@ def rebin(x,y,tr_dur,tr_pd):
 
 def improve_local_view(pathin,pathout,globsize,locsize,count_max,datname):
     prob_entry_list=[]
-    dataset=os.scandir(pathin)
-    entries=list(dataset)
+    entries=os.listdir(pathin)
     np.random.shuffle(entries)
+    checkent=os.listdir(pathout+'global/')
+    checkent=np.asarray([el[0:9] for el in checkent])
     count=0
     for el in entries:
-        hdu = fits.open(pathin+el.name)
+        if(np.any(checkent==el[4:13])): 
+            print("already there")
+            continue
+
+        hdu = fits.open(pathin+el)
+    
         n=len(hdu)
         count=count+1
-        if(count==count_max): break
+        #if(count==count_max): break
         for i in range(1,n-1):
             if(hdu[i].header['TDUR']==None or hdu[i].header['TPERIOD']==None): continue
             if(hdu[i].header['TDUR']<0.1 or hdu[i].header['TPERIOD']<0.001): 
-                print('miss 1:',el.name[4:13],i)
-                prob_entry_list.append((el.name,i))
+                print('miss 1:',el[4:13],i)
+                prob_entry_list.append((el,i))
                 continue
             phase=hdu[i].data['PHASE']
             tr_pd=hdu[i].header['TPERIOD']
@@ -139,11 +145,11 @@ def improve_local_view(pathin,pathout,globsize,locsize,count_max,datname):
 
             #print('check',len(bins),len(bins_lc))
             
-            print(cut_phase,cut/tr_pd)
+            #print(cut_phase,cut/tr_pd)
             temp=[(x[i],y[i]) for i in range(0,len(x)) if(x[i]<cut_phase+cut/tr_pd and x[i]>cut_phase-cut/tr_pd)]
             if(len(np.array(temp).shape)<2):
-                print('miss 2:',el.name[4:13],i)
-                prob_entry_list.append((el.name,i))
+                print('miss 2:',el[4:13],i)
+                prob_entry_list.append((el,i))
                 continue
             xl=np.array(temp)[:,0]
             yl=np.array(temp)[:,1]
@@ -155,12 +161,12 @@ def improve_local_view(pathin,pathout,globsize,locsize,count_max,datname):
             print('int:',len(df_lc_x),len(df_lc_y))
 
             if(len(df_lc_y)<locsize/4):
-                print('miss 2:',el.name[4:13],i)
-                prob_entry_list.append((el.name,i))
+                print('miss 2:',el[4:13],i)
+                prob_entry_list.append((el,i))
                 continue
             if(df_lc_x[0]>bins_lc[0]+cut*0.5/tr_pd or df_lc_x[-1]<bins_lc[-1]-cut*0.5/tr_pd):
-                print('miss 3:',el.name[4:13],i)
-                prob_entry_list.append((el.name,i))
+                print('miss 3:',el[4:13],i)
+                prob_entry_list.append((el,i))
                 continue
 
             funcl=interp1d(df_lc_x,df_lc_y,kind='quadratic',fill_value='extrapolate',bounds_error=False)
@@ -170,12 +176,13 @@ def improve_local_view(pathin,pathout,globsize,locsize,count_max,datname):
 
             op_lc = pd.DataFrame(list(zip(df_lc_x, df_lc_y)),columns =['phase', 'flux'])
             op_gl = pd.DataFrame(list(zip(df_gl_x, df_gl_y)),columns =['phase', 'flux'])
-            problist = pd.DataFrame(list(prob_entry_list),columns =['file', 'hdu'])
+            
 
-            print('hit:',count,el.name[4:13],i,len(op_lc),len(op_gl))
+            print('hit:',count,el[4:13],i,len(op_lc),len(op_gl))
 
-            op_lc.to_csv(pathout+'/local/'+el.name[4:13]+'_'+str(i)+'_l',sep=' ',index=False)
-            op_gl.to_csv(pathout+'/global/'+el.name[4:13]+'_'+str(i)+'_g',sep=' ',index=False)
+            op_lc.to_csv(pathout+'/local/'+el[4:13]+'_'+str(i)+'_l',sep=' ',index=False)
+            op_gl.to_csv(pathout+'/global/'+el[4:13]+'_'+str(i)+'_g',sep=' ',index=False)
+    problist = pd.DataFrame(list(prob_entry_list),columns =['file', 'hdu'])
     problist.to_csv(pathout+'/'+datname,sep=' ',index=False)
 
 
@@ -818,7 +825,7 @@ def extract(func,pathin,pathout,size):
 #get_shorter_ones(6000,FILEPATH_DATA,'data_red_shortdur_6000/')
 #rebin_the_raw(3000,1000,FILEPATH_FPS,'raw_rebin2000/')
 #transit_only(FILEPATH_DATA,'data_stitch_prelim/')
-#improve_local_view(FILEPATH_FPS,'new_loc_glob',2000,200,4000,'probdat_fps')
+improve_local_view(FILEPATH_FPS,'../../processed_directories/new_loc_glob/',2000,200,4000,'probdat2')
 #improve_local_view(FILEPATH_DATA,'new_loc_glob',2000,200,4000,'probdat_pl')
-get_transits_from_raw(500,FILEPATH_DATA,'data_red_raw_dirty500/')
+#get_transits_from_raw(500,FILEPATH_DATA,'data_red_raw_dirty500/')
 #get_transits_from_raw(500,FILEPATH_FPS,'data_red_raw_dirty500/')

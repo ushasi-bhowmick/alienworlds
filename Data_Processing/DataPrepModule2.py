@@ -10,6 +10,7 @@ import os
 from scipy.interpolate import interp1d
 from astropy.io import fits,ascii
 import tensorflow as tf
+import GetLightcurves as gc
 
 #ohkay... me trying out more and more ideas which i dont think will work. Now if we take this as a segmentation 
 #problem at face value... its worth a shot. similar to the recinstruction idea but more fancy ig.
@@ -34,6 +35,7 @@ def smoothbin(arr):
                 arr[m]=-1
 
 def remove_nan(red_flux,bins):
+    '''
     for i in range(0,len(red_flux)):
         if(np.isnan(red_flux[i])):
             t=1
@@ -48,11 +50,28 @@ def remove_nan(red_flux,bins):
                     t+=1
                 red_flux[i]=(red_flux[i-t]+red_flux[i+t])/2
             except:
-                red_flux[i]=0
+                red_flux[i]=0'''
     for i in range(0,len(red_flux)):
         if np.isnan(red_flux[i]):
             red_flux[i]=0
-        
+
+
+def remove_nan_2(red_flux):
+    clean = [el for el in red_flux if not np.isnan(el)]
+    mid = np.median(clean)
+    std = np.std(clean)
+    counts = np.isnan(red_flux).sum()
+    
+    noise_arr = np.random.normal(mid, std*0.5, counts)
+    
+    j=0
+    for i in range(0,len(red_flux)):
+        if(np.isnan(red_flux[i])): 
+            #print(red_flux[i], noise_arr[j])
+            red_flux[i]=noise_arr[j]
+            j+=1
+          
+
 def inst_segment(pathin,pathout,bins):
     entries=os.listdir(pathin)
     tick=0
@@ -502,7 +521,7 @@ def sem_segment_one(pathin, pathout, bins):
         print(tick,'hit:',el[4:13],np.array(lightcurve).shape,mask.shape,len(hdu)-2)
 
 def getids():
-    tfr_testdata = tf.data.TFRecordDataset(['../../training_data/seg_mask_test_av_aug']) 
+    tfr_testdata = tf.data.TFRecordDataset(['../../training_data/sem_seg_av_zer_aug_test']) 
     testdata = tfr_testdata.map(_parse_tfr_element)
     entries=os.listdir(FILEPATH_FPS)
     ID = [instance[3] for instance in testdata]
@@ -523,13 +542,20 @@ def compr_sem_seg(pathin,pathout,bins):
     #ref_label=av_entry['av_training_set']
     ref_label=av_entry['av_pred_class']
 
-    newids= getids()
+    #newids= getids()
 
     tick=54
-    for el in newids[54:]:
+    for el in entries:
         tick+=1 
         #if(tick==10): break
         hdu = fits.open(pathin+el)
+
+        try: loc=np.where(np.asarray(ref_kepid)==el[4:13])[0]
+        except: continue
+        loc = np.asarray([ref_label[m] for m in loc])
+        print(loc)
+        if(not np.any(loc=='PC')): continue
+
         
         flux = hdu[1].data['LC_DETREND']
         try: residue = hdu[len(hdu)-1].data['RESIDUAL_LC']
@@ -549,7 +575,7 @@ def compr_sem_seg(pathin,pathout,bins):
             #if(len(red_flux)==0): continue
 
             #get a clean chunk
-            #count_nan=np.isnan(red_flux).sum()
+            #count_nan=np.isnan(red_flux).sum() 
             #if(count_nan/bins > 0.1): 
             #    continue
 
@@ -651,6 +677,163 @@ def compr_sem_seg(pathin,pathout,bins):
             np.asarray(counts).shape,len(hdu)-2)
 
 
+def compr_sem_seg_2(pathin, pathout, bins):
+    entries=os.listdir(pathin)
+    av_entry=ascii.read(CATALOG+'autovetter_label.tab')
+    av_pl=np.array(av_entry['tce_plnt_num'])
+    ref_kepid=[('0000'+str(el)[:9])[-9:] for el in av_entry['kepid']]
+    #ref_label=av_entry['av_training_set']
+    ref_label=av_entry['av_training_set']
+    seconds=av_entry['av_pred_class']
+
+    #newids= getids()
+
+    tick=9000
+    for el in entries[9000:]:
+        tick+=1 
+        #if(tick==20): break 
+        hdu = fits.open(pathin+el)
+        
+        try: flux = hdu[1].data['LC_DETREND']
+        except: continue
+        try: residue = hdu[len(hdu)-1].data['RESIDUAL_LC']
+        except: continue
+
+        loc=np.where(np.asarray(ref_kepid)==el[4:13])
+        if(not np.any(ref_label[loc[0]]=='PC')): 
+            print('no pl:',np.asarray(ref_label[loc[0]]))
+            continue
+
+        #get a preliminary phase... must center at least one transit
+        ind_arr=np.arange(0,len(flux)-bins,bins)
+
+        lightcurve=[]
+        totmask=[]
+        counts=[]
+        for ind in ind_arr:
+            
+
+            counting=[0,0]
+            red_flux=flux[ind:ind+bins]
+            red_res=residue[ind:ind+bins]
+
+            if(len(red_flux)==0): continue
+
+            #get a clean chunk
+            #count_nan=np.isnan(red_flux).sum() 
+            #if(count_nan/bins > 0.1): 
+            #    continue
+
+            mask=np.asarray([[1,1,1] if (np.isnan(red_res[x]) and not np.isnan(red_flux[x])) else [0,0,1] for x in range(0,len(red_res))])
+            #if(np.asarray([(np.asarray(m)==np.asarray([0,0,1])).all() for m in mask]).all()): 
+            #    #print('skip')
+            #    continue
+            trackrog=np.where(np.isnan(red_flux))[0]
+            remove_nan(red_flux,4000)
+            
+            for tce in range(1,len(hdu)-2):
+                red_phase=hdu[tce].data['PHASE'][ind:ind+bins]
+                ph_ind=[i for i in range(1,bins) if (red_phase[i]*red_phase[i-1]<0 and np.abs(red_phase[i]*red_phase[i-1])<0.001)]
+                #if(len(ph_ind)==0): 
+                #    #print('no rel phase')
+                #    continue
+                
+                #set an index
+                try:
+                    loc=np.where(np.asarray(ref_kepid)==el[4:13])
+                    loc_f=[m for m in loc[0] if str(av_pl[m])==str(tce)]
+                    if(len(loc_f)==0):
+                        #print("not in catalog:",tce)
+                        if(tce == 1 ): break
+                        label=[0,0,1]
+                        counting[1]+=1
+                    else:
+                        if(ref_label[loc_f[0]]=='PC'): 
+                            label=[1,0,0]
+                            counting[0]+=1
+                        elif(ref_label[loc_f[0]]=='AFP' or ref_label[loc_f[0]]=='NTP'): 
+                            label=[0,1,0]
+                            counting[1]+=1
+                        elif(seconds[loc_f[0]]=='PC'): 
+                            label=[1,0,0]
+                            counting[0]+=1
+                        else: 
+                            label=[0,1,0]
+                            counting[1]+=1
+                except ValueError as ve:
+                    #print("miss ind:",el[4:13])
+                    label=[0,0,1]
+                
+                new_flux=hdu[tce+1].data['LC_DETREND']
+                new_flux=new_flux[ind:ind+bins]
+
+                for b in trackrog:
+                    if(np.isnan(new_flux[b])): 
+                        new_flux[b]=0
+                for m in range(0,len(mask)):
+                    if(np.isnan(new_flux[m]) and (np.asarray(mask[m])==np.asarray([1,1,1])).all()):
+                        mask[m]=label
+
+
+            red_phase=hdu[len(hdu)-2].data['PHASE'][ind:ind+bins]
+            ph_ind=[i for i in range(1,bins) if (red_phase[i]*red_phase[i-1]<0 and np.abs(red_phase[i]*red_phase[i-1])<0.001)]
+            if(len(ph_ind)>0): 
+                try:
+                    
+                    loc=np.where(np.asarray(ref_kepid)==el[4:13])
+                    loc_f=[m for m in loc[0] if str(av_pl[m])==str(len(hdu)-2)]
+                    if(len(loc_f)==0):
+                        #print("not in catalog:",len(hdu)-2)
+                        if(len(hdu)-2 == 1): break
+                        label=[0,0,1]
+                        #counting[1]+=1
+                    else:
+                        if(ref_label[loc_f[0]]=='PC'): 
+                            counting[0]+=1
+                            label=[1,0,0]
+                        elif(ref_label[loc_f[0]]=='AFP' or ref_label[loc_f[0]]=='NTP'): 
+                            counting[1]+=1
+                            label=[0,1,0]
+                        elif(seconds[loc_f[0]]=='PC'): 
+                            label=[1,0,0]
+                            counting[0]+=1
+                        else: 
+                            counting[1]+=1
+                            label=[0,1,0]
+                except ValueError as ve:
+                    #print("miss ind:",el[4:13])
+                    label=[0,0,1]
+                for m in range(0,len(mask)):
+                    if((np.asarray(mask[m])==np.asarray([1,1,1])).all()):
+                        mask[m]=label
+            else: 
+                #print('no rel phase')
+                for m in range(0,len(mask)):
+                    if((np.asarray(mask[m])==np.asarray([1,1,1])).all()):
+                        mask[m]=[0,0,1]
+
+        
+            #if(np.asarray([(np.asarray(m)==np.asarray([0,0,1])).all() for m in mask]).all()): 
+            #    #print('skip')
+            #    continue
+            lightcurve.append(red_flux)
+            totmask.append(mask.reshape(-1))
+            counts.append(counting)
+            
+
+        if(len(lightcurve)==0):
+            print('miss',el[4:13])
+            continue    
+        
+        net = np.asarray([[lightcurve[i],totmask[i],counts[i]] for i in range(0,len(counts))], dtype='object')
+        gc.write_tfr_record(pathout+el[4:13],net,
+            ['input','mask','counts'],['ar','ar','ar'],['float32','bool', 'int8'])
+        #np.savetxt(pathout+'xlabel/'+el[4:13],lightcurve,delimiter=' ')
+        #np.savetxt(pathout+'ylabel/'+el[4:13],totmask,delimiter=' ')
+        #np.savetxt(pathout+'counts/'+el[4:13],counts,delimiter=' ')
+        print(tick,'hit:',el[4:13],np.asarray(lightcurve).shape,np.asarray(totmask).shape,
+            np.asarray(counts).shape,len(hdu)-2,np.asarray(ref_label[loc[0]]))
+
 def plot_inst_seg(path,r):
     fig,ax = plt.subplots(r,r,figsize=(10,10))
     entry=os.listdir(path)
@@ -709,6 +892,34 @@ def plot_compr_seg(path,r):
             ax[i][j].plot(df[j])
             ax[i][j].legend()
             ax[i][j].set_xlim(2000,3000)
+       
+        i=i+1
+        if(i==r): break
+
+def plot_compr_seg_2(path,r):
+    fig,ax = plt.subplots(r,4,figsize=(10,10))
+    entry=os.listdir(path)
+    np.random.shuffle(entry)
+    i=0
+    j=0
+    for el in entry:
+        df,df2,dfc = gc.read_tfr_record(path+el,
+            ['input','mask','counts'],
+            ['ar','ar','ar'], 
+            [tf.float32, tf.bool, tf.int8])
+        if(len(df)<4): continue
+        
+        df2=np.asarray(df2, dtype='float32').reshape((len(df),4000,3))
+        print(np.isnan(df).sum())
+        df = np.asarray(df)
+        dfc = np.asarray(dfc)
+        for j in range(0,4):
+            mm=df[j,np.argmin(df[j])]
+            ax[i][j].plot(df2[j,:,1]*2*mm,color='black',label=dfc[j])
+            ax[i][j].plot(df2[j,:,2]*2*mm,color='green')
+            ax[i][j].plot(df[j])
+            ax[i][j].legend()
+            #ax[i][j].set_xlim(2000,3000)
        
         i=i+1
         if(i==r): break
@@ -912,20 +1123,47 @@ def get_tfr_records(inparr,oparr,ctarr, elarr, filepath):
     print(f"Wrote {count} elements to TFRecord")
     return count
 
-def compr_sem_ts(pathin,maxex):
+def compr_sem_ts(pathin,maxex, outpath):
     X_train=[]
     Y_train=[]
     C_train=[]
     el_track=[]
-    pl_entry=os.listdir(pathin+'xlabel/')
+    pl_entry=os.listdir(pathin)
     np.random.shuffle(pl_entry)
     m=0
+
+    av_entry=ascii.read(CATALOG+'autovetter_label.tab')
+    av_pl=np.array(av_entry['tce_plnt_num'])
+    ref_kepid=[('0000'+str(el)[:9])[-9:] for el in av_entry['kepid']]
+    ref_label=np.asarray(av_entry['av_training_set'])
+    tce_dur=np.asarray(av_entry['tce_period'])
+    #av_entry=ascii.read(CATALOG+'robovetter_label.dat')
+    #av_pl=np.array(av_entry['tce_plnt_'])
+    #ref_kepid=[('0000'+str(el)[:9])[-9:] for el in av_entry['kepid']]
+    #ref_label=np.asarray(av_entry['label'])
+
     for el in pl_entry:
+        
+        try:
+            loc=np.where(np.array(ref_kepid)==el[0:9])[0]
+
+        except ValueError as ve:
+            print("miss ind:",el[0:9])
+            continue
+        if(len(loc)==0): continue
+        if(np.all(ref_label[loc]=='UNK')): continue
+        if(np.all(tce_dur[loc]>81)): continue
+
         m+=1
         #if(m==60): break
-        df=np.loadtxt(pathin+'xlabel/'+el)
-        dfy=np.loadtxt(pathin+'ylabel/'+el)
-        dfc=np.loadtxt(pathin+'counts/'+el)
+        df,dfy,dfc = gc.read_tfr_record(pathin+el,
+            ['input','mask','counts'],
+            ['ar','ar','ar'], 
+            [tf.float32, tf.bool, tf.int8])
+        
+        df = np.asarray(df)
+        dfc = np.asarray(dfc)
+        dfy = np.asarray(dfy)
 
         els,cts = np.unique(dfc,axis=0,return_counts=True)
         bestarr = els[np.argmax(cts)]
@@ -934,22 +1172,170 @@ def compr_sem_ts(pathin,maxex):
         try: temp=dfy.reshape(len(dfc),4000,3)
         except: continue
         ex = 0
+        mintab = int(min(1,len(best_inds)))
+        for inds in best_inds[mintab:]:
+            check_noise=[(temp[inds,i]==np.asarray([0,0,1])).all() for i in range(0,len(temp[inds]))]
+            if(np.asarray(check_noise).all()): 
+                print('noise',el[0:9])
+                continue
+            check_overload = [(temp[inds,i]==np.asarray([0,1,0])).all() for i in range(0,len(temp[inds]))]
+            if(np.asarray(check_overload).sum()/4000 >0.8): 
+                print('too much fps:',el[0:9])
+                #continue
+
+            #check_overload = [(temp[inds,i]==np.asarray([1,0,0])).all() for i in range(0,len(temp[inds]))]
+            #if(np.asarray(check_overload).sum()/4000 >0.8): 
+            #    print('too much pl:',el[0:9])
+            #    continue
+            prop = temp[inds,:,0].sum()
+            prop2 = temp[inds,:,1].sum()
+            #if(prop>prop2 and prop<1000): 
+            #    print('double:')
+            #   X_train.append(df[best_inds[-1]])
+            #    Y_train.append(dfy[best_inds[-1]])
+            #    C_train.append(dfc[best_inds[-1]])
+            #    el_track.append(el[0:9])
+         
+            X_train.append(df[inds])
+            Y_train.append(dfy[inds])
+            C_train.append(dfc[inds])
+            el_track.append(el[0:9])
+            ex+=1
+            if(ex==maxex): break
+        print('hit',el[0:9],len(best_inds), tce_dur[loc])
+    
+    Y_train=np.asarray(Y_train, np.bool)
+    X_train=np.asarray(X_train, np.float32)
+    C_train=np.asarray(C_train, np.int8)
+
+    medinds_p=np.asarray([i for i in range(0,len(C_train)) if (C_train[i,0]>0)])
+    medinds_fps=np.setdiff1d(np.arange(0,len(C_train)), medinds_p)
+    print(len(medinds_p),len(medinds_fps))
+    
+    pind = len(medinds_p)
+    fpsind = len(medinds_fps)
+
+    #fpsind = min(pind,fpsind)
+    #pind = fpsind
+    
+    nXtrain=[]
+    nYtrain=[]
+    nCtrain=[]
+    eltrain=[]
+    nXtest=[]
+    nYtest=[]
+    nCtest=[]
+    eltest=[]
+
+    [nXtrain.append(X_train[medinds_p[i]]) for i in range(0,int(pind*0.8),1)]
+    [nXtest.append(X_train[medinds_p[i]]) for i in range(int(pind*0.8),pind,1)]
+    [nXtrain.append(X_train[medinds_fps[i]]) for i in range(0,int(fpsind*0.8),1)]
+    [nXtest.append(X_train[medinds_fps[i]]) for i in range(int(fpsind*0.8),fpsind,1)]
+    [nYtrain.append(Y_train[medinds_p[i]]) for i in range(0,int(pind*0.8),1)]
+    [nYtest.append(Y_train[medinds_p[i]]) for i in range(int(pind*0.8),pind,1)]
+    [nYtrain.append(Y_train[medinds_fps[i]]) for i in range(0,int(fpsind*0.8),1)]
+    [nYtest.append(Y_train[medinds_fps[i]]) for i in range(int(fpsind*0.8),fpsind,1)]
+    [nCtrain.append(C_train[medinds_p[i]]) for i in range(0,int(pind*0.8),1)]
+    [nCtest.append(C_train[medinds_p[i]]) for i in range(int(pind*0.8),pind,1)]
+    [nCtrain.append(C_train[medinds_fps[i]]) for i in range(0,int(fpsind*0.8),1)]
+    [nCtest.append(C_train[medinds_fps[i]]) for i in range(int(fpsind*0.8),fpsind,1)]
+    [eltrain.append(el_track[medinds_p[i]]) for i in range(0,int(pind*0.8),1)]
+    [eltest.append(el_track[medinds_p[i]]) for i in range(int(pind*0.8),pind,1)]
+    [eltrain.append(el_track[medinds_fps[i]]) for i in range(0,int(fpsind*0.8),1)]
+    [eltest.append(el_track[medinds_fps[i]]) for i in range(int(fpsind*0.8),fpsind,1)]
+
+    #randomise
+    rarr=np.arange(0,len(nCtrain))
+    rarrt=np.arange(0,len(nCtest))
+    np.random.shuffle(rarr)
+    np.random.shuffle(rarrt)
+    nXtrain = [nXtrain[i] for i in rarr]
+    nYtrain = [nYtrain[i] for i in rarr]
+    nCtrain = [nCtrain[i] for i in rarr]
+    eltrain = [eltrain[i] for i in rarr]
+    nXtest = [nXtest[i] for i in rarrt]
+    nYtest = [nYtest[i] for i in rarrt]
+    nCtest = [nCtest[i] for i in rarrt]
+    eltest = [eltest[i] for i in rarrt]
+    '''
+    for i in range(0,min(len(medinds_p),len(medinds_fps))):
+        nXtrain.append(X_train[medinds_fps[i]])
+        nYtrain.append(Y_train[medinds_fps[i]])
+        nCtrain.append(C_train[medinds_fps[i]])
+        nXtrain.append(X_train[medinds_p[i]])
+        nYtrain.append(Y_train[medinds_p[i]])
+        nCtrain.append(C_train[medinds_p[i]])'''
+
+    net = np.asarray([[nXtrain[i],nYtrain[i],nCtrain[i],eltrain[i]] for i in range(len(eltrain))], dtype='object')
+    nett = np.asarray([[nXtest[i],nYtest[i],nCtest[i],eltest[i]] for i in range(len(eltest))], dtype='object')
+    gc.write_tfr_record(outpath+'train',net,['input','map','counts','id'],
+        ['ar','ar','ar','b'],['float32','bool','int8','byte'])
+    gc.write_tfr_record(outpath+'test',nett,['input','map','counts','id'],
+        ['ar','ar','ar','b'],['float32','bool','int8','byte'])
+    
+    print(np.asarray(nXtrain).shape, np.asarray(nYtrain).shape, np.asarray(nCtrain).shape)
+    print(np.asarray(nXtest).shape, np.asarray(nYtest).shape, np.asarray(nCtest).shape)
+
+def compr_sem_ts_2(pathin,maxex):
+    X_train=[]
+    Y_train=[]
+    C_train=[]
+    el_track=[]
+    pl_entry=os.listdir(pathin)
+    np.random.shuffle(pl_entry)
+
+    av_entry=ascii.read(CATALOG+'robovetter_label.dat')
+    av_pl=np.array(av_entry['tce_plnt_num'])
+    ref_kepid=[('0000'+str(el)[:9])[-9:] for el in av_entry['kepid']]
+    ref_label=np.asarray(av_entry['label'])
+
+    m=0
+    for el in pl_entry:
+        m+=1
+        #if(m==60): break
+
+        try:
+            loc=np.where(np.array(ref_kepid)==el[0:9])[0]
+
+        except ValueError as ve:
+            print("miss ind:",el[0:9])
+            continue
+        if(len(loc)==0): continue
+        if(np.any(ref_label[loc]=='CANDIDATE')): continue
+
+        df,dfy,dfc = gc.read_tfr_record(pathin+el,
+            ['input','mask','counts'],
+            ['ar','ar','ar'], 
+            [tf.float32, tf.bool, tf.int8])
+
+        els,cts = np.unique(dfc,axis=0,return_counts=True)
+        bestarr = els[np.argmax(cts)]
+        best_inds = [i for i in range(0,len(dfc)) if(np.all(np.asarray(dfc[i])==np.asarray(bestarr)))]
+
+        temp=np.asarray(dfy).reshape(len(dfc),4000,3)
+    
+        ex = 0
         for inds in best_inds:
             check_noise=[(temp[inds,i]==np.asarray([0,0,1])).all() for i in range(0,len(temp[inds]))]
             if(np.asarray(check_noise).all()): 
                 print('noise',el[0:9])
                 continue
             #check_overload = [(temp[inds,i]==np.asarray([0,1,0])).all() for i in range(0,len(temp[inds]))]
-            #if(np.asarray(check_overload).sum()/4000 >0.75): 
+            #if(np.asarray(check_overload).sum()/4000 >0.8): 
             #    print('too much fps:',el[0:9])
             #    continue
 
-            if(dfc[inds,0]>0): 
-                print('double:')
-                X_train.append(df[best_inds[-1]])
-                Y_train.append(dfy[best_inds[-1]])
-                C_train.append(dfc[best_inds[-1]])
-                el_track.append(el[0:9])
+            #check_overload = [(temp[inds,i]==np.asarray([1,0,0])).all() for i in range(0,len(temp[inds]))]
+            #if(np.asarray(check_overload).sum()/4000 >0.8): 
+            #    print('too much pl:',el[0:9])
+            #    continue
+
+            #if(dfc[inds,1]<0.5): 
+            #    print('double:')
+            #    X_train.append(df[best_inds[-1]])
+            #    Y_train.append(dfy[best_inds[-1]])
+            #    C_train.append(dfc[best_inds[-1]])
+            #    el_track.append(el[0:9])
          
             X_train.append(df[inds])
             Y_train.append(dfy[inds])
@@ -1023,12 +1409,8 @@ def compr_sem_ts(pathin,maxex):
     
     print(np.asarray(nXtrain).shape, np.asarray(nYtrain).shape, np.asarray(nCtrain).shape)
     print(np.asarray(nXtest).shape, np.asarray(nYtest).shape, np.asarray(nCtest).shape)
-    get_tfr_records(nXtrain, nYtrain, nCtrain, eltrain, '../../training_data/seg_mask_training_av_aug')
-    get_tfr_records(nXtest, nYtest, nCtest, eltest, '../../training_data/seg_mask_test_av_aug')
-    #np.savetxt('../../training_data/Xtrain_seg_mask_rv_sm_bal.csv',nXtrain,delimiter=',')
-    #np.savetxt('../../training_data/Ytrain_seg_mask_rv_sm_bal.csv',nYtrain,delimiter=',')
-    #np.savetxt('../../training_data/Ctrain_seg_mask_rv_sm_bal.csv',nCtrain,delimiter=',')
-
+    get_tfr_records(nXtrain, nYtrain, nCtrain, eltrain, '../../training_data/seg_mask_training_rv_filt')
+    get_tfr_records(nXtest, nYtest, nCtest, eltest, '../../training_data/seg_mask_test_rv_filt')
 
 def _parse_tfr_element(element):
   desc = {
@@ -1052,6 +1434,7 @@ def _parse_tfr_element(element):
   return (inp,map,cts,id)
 
 def expand_ts(pathin, proc_path): 
+    
     tfr_testdata = tf.data.TFRecordDataset([pathin]) 
     testdata = tfr_testdata.map(_parse_tfr_element)
 
@@ -1059,9 +1442,10 @@ def expand_ts(pathin, proc_path):
     ID = [ID[i].numpy() for i in range(0,len(ID))]
     ID = [str(ID[i])[2:11] for i in range(0,len(ID))]
     print(ID[2:10])
+    #ID = os.listdir('../../processed_directories/expand_test_and_noise/counts')
 
     for el in ID:
-        writer = tf.io.TFRecordWriter('../../processed_directories/expand_test/'+el) #create a writer that'll store our data to disk
+        writer = tf.io.TFRecordWriter('../../processed_directories/expand_test_av/'+el) #create a writer that'll store our data to disk
         df=np.loadtxt(proc_path+'xlabel/'+el)
         dfy=np.loadtxt(proc_path+'ylabel/'+el)
         dfc=np.loadtxt(proc_path+'counts/'+el)
@@ -1079,8 +1463,337 @@ def expand_ts(pathin, proc_path):
         print(f"Wrote {count} elements to {el}")
 
 
+def expand_ts_2(pathin, proc_path): 
+    
+    tfr_testdata = tf.data.TFRecordDataset([pathin]) 
+    testdata = tfr_testdata.map(_parse_tfr_element)
+
+    ID = [instance[3] for instance in testdata]
+    ID = [ID[i].numpy() for i in range(0,len(ID))]
+    ID = [str(ID[i])[2:11] for i in range(0,len(ID))]
+    print(ID[2:10])
+    #ID = os.listdir('../../processed_directories/expand_test_and_noise/counts')
+
+    for el in ID:
+        df,dfy,dfc = gc.read_tfr_record(proc_path+el,
+            ['input','mask','counts'],['ar','ar','ar'], 
+            [tf.float32, tf.bool, tf.int8])
+        
+        net = np.asarray([[df[i], dfy[i]] for i in range(0,len(df))], dtype='object')
+        gc.write_tfr_record('../../processed_directories/expand_test_av/'+el,net,
+        ['input','map'],['ar','ar'],['float32','float32'])
+        
+
+def cumulative_ts(phfold_path, raw_path, outpath):
+    #phf_entry = os.listdir(phfold_path)
+    print(raw_path)
+    raw_entry = os.listdir(raw_path)
+    catalog = ascii.read(CATALOG+'autovetter_label.tab')
+    av_no=np.asarray(catalog['tce_plnt_num'])
+    catkepid=[('0000'+str(el)[:9])[-9:] for el in catalog['kepid']]
+    catlabel=np.asarray(catalog['av_training_set'])
+
+    X_train=[]
+    M_train=[]
+    PL_train=[]
+    PG_train=[]
+    C_train=[]
+    L_train=[]
+    el_train=[]
+
+    note=0
+    for el in raw_entry:
+        tempx=[]
+        tempm=[]
+        tempc=[]
+
+        try: loc=np.where(np.asarray(catkepid)==el[0:9])[0]
+            #loc_f=[m for m in loc if str(av_no[m])==el[-3]]
+        except ValueError as ve:
+            print("miss ind:",el[0:9])
+            continue
+        #check if the raw lc is atleast in catalog
+        if(len(loc)==0): continue
+
+        nums = np.asarray(av_no[loc])
+
+        dfr_i,dfr_m,dfr_c = gc.read_tfr_record(raw_path+el,['input','mask','counts'],
+            ['ar','ar','ar'], [tf.float32, tf.bool, tf.int8])
+
+        dfr_i = np.asarray(dfr_i)
+        dfr_m = np.asarray(dfr_m)
+        dfr_c = np.asarray(dfr_c)
+
+        els,cts = np.unique(dfr_c,axis=0,return_counts=True)
+        bestarr = els[np.argmax(cts)]
+        best_inds = [i for i in range(0,len(dfr_c)) if(np.all(dfr_c[i]==np.asarray(bestarr)))]
+
+        try: temp=dfr_m.reshape(len(dfr_c),4000,3)
+        except: continue
+        mintab = int(min(1,len(best_inds)))
+        for inds in best_inds[mintab:]:
+            if(len(dfr_i[inds])<4000): 
+                print('odd')
+                continue
+            check_noise=[(temp[inds,i]==np.asarray([0,0,1])).all() for i in range(0,len(temp[inds]))]
+            if(np.asarray(check_noise).all()): 
+                print('noise',el[0:9])
+                continue
+            
+            tempx.append(dfr_i[inds])
+            tempm.append(dfr_m[inds])
+            tempc.append(dfr_c[inds])
+            break
+        if(len(tempx)<1): 
+            print('miss')
+            continue
+        note+=1
+        #if(note==50): break
+        for x in nums:
+            try: dfg = pd.read_csv(phfold_path+'global/'+el+'_'+str(x)+'_g',sep=" ")
+            except: continue
+
+            loc_f=[m for m in loc if av_no[m]==x]
+            #print(loc,nums,loc_f)
+            if(len(loc_f)==0): continue
+            if(catlabel[loc_f[0]]=='UNK'): continue
+            elif(catlabel[loc_f[0]]=='PC'): L_train.append([1,0])
+            else: L_train.append([0,1])
+
+            dfl = pd.read_csv(phfold_path+'local/'+el+'_'+str(x)+'_l',sep=" ")
 
 
+            X_train.append(tempx[0])
+            M_train.append(tempm[0])
+            C_train.append(tempc[0])
+            PL_train.append(np.asarray(dfl['flux']))
+            PG_train.append(np.asarray(dfg['flux']))
+            el_train.append(el+'_'+str(av_no[loc_f[0]]))
+ 
+            print(el,loc_f[0], len(dfl),len(dfg),tempx[0].shape,tempm[0].shape,tempc[0],catlabel[loc_f[0]])
+
+    M_train=np.asarray(M_train, np.bool)
+    X_train=np.asarray(X_train, np.float32)
+    C_train=np.asarray(C_train, np.int8)
+    PL_train=np.asarray(PL_train, np.float32)
+    PG_train=np.asarray(PG_train, np.float32)
+    L_train=np.asarray(L_train, np.bool)
+    el_train = np.asarray(el_train)
+
+    medinds_p=np.asarray([i for i in range(0,len(L_train)) if (L_train[i,0])])
+    medinds_fps=np.setdiff1d(np.arange(0,len(C_train)), medinds_p)
+    print(len(medinds_p),len(medinds_fps))
+    
+    pind = len(medinds_p)
+    fpsind = len(medinds_fps)
+
+    np.random.shuffle(medinds_fps)
+    np.random.shuffle(medinds_p)
+
+    nXtrain=[]
+    nMtrain=[]
+    nCtrain=[]
+    nPLtrain=[]
+    nPGtrain=[]
+    nLtrain=[]
+    neltrain=[]
+    nXtest=[]
+    nMtest=[]
+    nCtest=[]
+    nPLtest=[]
+    nPGtest=[]
+    nLtest=[]
+    neltest=[]
+
+    [nXtrain.append(X_train[medinds_p[i]]) for i in range(0,int(pind*0.8),1)]
+    [nXtest.append(X_train[medinds_p[i]]) for i in range(int(pind*0.8),pind,1)]
+    [nXtrain.append(X_train[medinds_fps[i]]) for i in range(0,int(fpsind*0.8),1)]
+    [nXtest.append(X_train[medinds_fps[i]]) for i in range(int(fpsind*0.8),fpsind,1)]
+    [nMtrain.append(M_train[medinds_p[i]]) for i in range(0,int(pind*0.8),1)]
+    [nMtest.append(M_train[medinds_p[i]]) for i in range(int(pind*0.8),pind,1)]
+    [nMtrain.append(M_train[medinds_fps[i]]) for i in range(0,int(fpsind*0.8),1)]
+    [nMtest.append(M_train[medinds_fps[i]]) for i in range(int(fpsind*0.8),fpsind,1)]
+    [nCtrain.append(C_train[medinds_p[i]]) for i in range(0,int(pind*0.8),1)]
+    [nCtest.append(C_train[medinds_p[i]]) for i in range(int(pind*0.8),pind,1)]
+    [nCtrain.append(C_train[medinds_fps[i]]) for i in range(0,int(fpsind*0.8),1)]
+    [nCtest.append(C_train[medinds_fps[i]]) for i in range(int(fpsind*0.8),fpsind,1)]
+    [nPLtrain.append(PL_train[medinds_p[i]]) for i in range(0,int(pind*0.8),1)]
+    [nPLtest.append(PL_train[medinds_p[i]]) for i in range(int(pind*0.8),pind,1)]
+    [nPLtrain.append(PL_train[medinds_fps[i]]) for i in range(0,int(fpsind*0.8),1)]
+    [nPLtest.append(PL_train[medinds_fps[i]]) for i in range(int(fpsind*0.8),fpsind,1)]
+    [nPGtrain.append(PG_train[medinds_p[i]]) for i in range(0,int(pind*0.8),1)]
+    [nPGtest.append(PG_train[medinds_p[i]]) for i in range(int(pind*0.8),pind,1)]
+    [nPGtrain.append(PG_train[medinds_fps[i]]) for i in range(0,int(fpsind*0.8),1)]
+    [nPGtest.append(PG_train[medinds_fps[i]]) for i in range(int(fpsind*0.8),fpsind,1)]
+    [nLtrain.append(L_train[medinds_p[i]]) for i in range(0,int(pind*0.8),1)]
+    [nLtest.append(L_train[medinds_p[i]]) for i in range(int(pind*0.8),pind,1)]
+    [nLtrain.append(L_train[medinds_fps[i]]) for i in range(0,int(fpsind*0.8),1)]
+    [nLtest.append(L_train[medinds_fps[i]]) for i in range(int(fpsind*0.8),fpsind,1)]
+    [neltrain.append(el_train[medinds_p[i]]) for i in range(0,int(pind*0.8),1)]
+    [neltest.append(el_train[medinds_p[i]]) for i in range(int(pind*0.8),pind,1)]
+    [neltrain.append(el_train[medinds_fps[i]]) for i in range(0,int(fpsind*0.8),1)]
+    [neltest.append(el_train[medinds_fps[i]]) for i in range(int(fpsind*0.8),fpsind,1)]
+
+    #randomise
+    rarr=np.arange(0,len(nCtrain))
+    rarrt=np.arange(0,len(nCtest))
+    np.random.shuffle(rarr)
+    np.random.shuffle(rarrt)
+    nXtrain = [nXtrain[i] for i in rarr]
+    nMtrain = [nMtrain[i] for i in rarr]
+    nCtrain = [nCtrain[i] for i in rarr]
+    nPLtrain = [nPLtrain[i] for i in rarr]
+    nPGtrain = [nPGtrain[i] for i in rarr]
+    nLtrain = [nLtrain[i] for i in rarr]
+    neltrain = [neltrain[i] for i in rarr]
+    nXtest = [nXtest[i] for i in rarrt]
+    nMtest = [nMtest[i] for i in rarrt]
+    nCtest = [nCtest[i] for i in rarrt]
+    nPLtest = [nPLtest[i] for i in rarrt]
+    nPGtest = [nPGtest[i] for i in rarrt]
+    nLtest = [nLtest[i] for i in rarrt]
+    neltest = [neltest[i] for i in rarrt]
+    
+    print(np.asarray(nXtrain).shape, np.asarray(nMtrain).shape)
+    print(np.asarray(nXtest).shape, np.asarray(nMtest).shape)
+    
+    net = np.asarray([[nXtrain[i],nMtrain[i],nPLtrain[i],nPGtrain[i],nCtrain[i],
+        nLtrain[i],neltrain[i]] for i in range(len(nLtrain))], dtype='object')
+    nett = np.asarray([[nXtest[i],nMtest[i],nPLtest[i],nPGtest[i],nCtest[i],
+        nLtest[i],neltest[i]] for i in range(len(nLtest))], dtype='object')
+    gc.write_tfr_record(outpath+'train',net,['input','map','local','global','counts','label','id'],
+        ['ar','ar','ar','ar','ar','ar','b'],['float32','bool','float32','float32','int8','bool','byte'])
+    gc.write_tfr_record(outpath+'test',nett,['input','map','local','global','counts','label','id'],
+        ['ar','ar','ar','ar','ar','ar','b'],['float32','bool','float32','float32','int8','bool','byte'])
+    
+    
+def cross_val_ts(pathin,maxex, outpath):
+    X_train=[]
+    Y_train=[]
+    C_train=[]
+    el_track=[]
+    pl_entry=os.listdir(pathin)
+    np.random.shuffle(pl_entry)
+    m=0
+
+    for el in pl_entry:
+        
+        m+=1
+        #if(m==60): break
+        df,dfy,dfc = gc.read_tfr_record(pathin+el,
+            ['input','mask','counts'],
+            ['ar','ar','ar'], 
+            [tf.float32, tf.bool, tf.int8])
+        
+        df = np.asarray(df)
+        dfc = np.asarray(dfc)
+        dfy = np.asarray(dfy)
+
+        els,cts = np.unique(dfc,axis=0,return_counts=True)
+        bestarr = els[np.argmax(cts)]
+        best_inds = [i for i in range(0,len(dfc)) if(np.all(np.asarray(dfc[i])==np.asarray(bestarr)))]
+
+        try: temp=dfy.reshape(len(dfc),4000,3)
+        except: continue
+        ex = 0
+        mintab = int(min(1,len(best_inds)))
+        for inds in best_inds[mintab:]:
+            check_noise=[(temp[inds,i]==np.asarray([0,0,1])).all() for i in range(0,len(temp[inds]))]
+            if(np.asarray(check_noise).all()): 
+                print('noise',el[0:9])
+                continue
+            check_overload = [(temp[inds,i]==np.asarray([0,1,0])).all() for i in range(0,len(temp[inds]))]
+            if(np.asarray(check_overload).sum()/4000 >0.8): 
+                print('too much fps:',el[0:9])
+                #continue
+
+            prop = temp[inds,:,0].sum()
+            prop2 = temp[inds,:,1].sum()
+            if(prop>prop2): 
+                print('double:')
+                X_train.append(df[best_inds[-1]])
+                Y_train.append(dfy[best_inds[-1]])
+                C_train.append(dfc[best_inds[-1]])
+                el_track.append(el[0:9])
+         
+            X_train.append(df[inds])
+            Y_train.append(dfy[inds])
+            C_train.append(dfc[inds])
+            el_track.append(el[0:9])
+            ex+=1
+            if(ex==maxex): break
+        print('hit',el[0:9],len(best_inds))
+    
+    Y_train=np.asarray(Y_train, np.bool)
+    X_train=np.asarray(X_train, np.float32)
+    C_train=np.asarray(C_train, np.int8)
+
+    medinds_p=np.asarray([i for i in range(0,len(C_train)) if (C_train[i,0]>0)])
+    medinds_fps=np.setdiff1d(np.arange(0,len(C_train)), medinds_p)
+    print(len(medinds_p),len(medinds_fps))
+    
+    pind = len(medinds_p)
+    fpsind = len(medinds_fps)
+
+    for m in range(0,5):
+        nXtrain=[]
+        nYtrain=[]
+        nCtrain=[]
+        eltrain=[]
+
+        [nXtrain.append(X_train[medinds_p[i]]) for i in range(int(pind*0.2*m),int(pind*0.2*(m+1)),1)]
+        [nXtrain.append(X_train[medinds_fps[i]]) for i in range(int(fpsind*0.2*m),int(fpsind*0.2*(m+1)),1)]
+        [nYtrain.append(Y_train[medinds_p[i]]) for i in range(int(pind*0.2*m),int(pind*0.2*(m+1)),1)]
+        [nYtrain.append(Y_train[medinds_fps[i]]) for i in range(int(fpsind*0.2*m),int(fpsind*0.2*(m+1)),1)]
+        [nCtrain.append(C_train[medinds_p[i]]) for i in range(int(pind*0.2*m),int(pind*0.2*(m+1)),1)]
+        [nCtrain.append(C_train[medinds_fps[i]]) for i in range(int(fpsind*0.2*m),int(fpsind*0.2*(m+1)),1)]
+        [eltrain.append(el_track[medinds_p[i]]) for i in range(int(pind*0.2*m),int(pind*0.2*(m+1)),1)]
+        [eltrain.append(el_track[medinds_fps[i]]) for i in range(int(fpsind*0.2*m),int(fpsind*0.2*(m+1)),1)]
+
+        #randomise
+        rarr=np.arange(0,len(nCtrain))
+        np.random.shuffle(rarr)
+        nXtrain = [nXtrain[i] for i in rarr]
+        nYtrain = [nYtrain[i] for i in rarr]
+        nCtrain = [nCtrain[i] for i in rarr]
+        eltrain = [eltrain[i] for i in rarr]
+    
+
+        net = np.asarray([[nXtrain[i],nYtrain[i],nCtrain[i],eltrain[i]] for i in range(len(eltrain))], dtype='object')
+        gc.write_tfr_record(outpath+'_s'+str(m),net,['input','map','counts','id'],
+            ['ar','ar','ar','b'],['float32','bool','int8','byte'])
+        
+        print(np.asarray(nXtrain).shape, np.asarray(nYtrain).shape, np.asarray(nCtrain).shape)
+
+
+def anomalies_ts(inpdir, pathout, maxex,bin, binpr):
+    entries = os.listdir(inpdir)
+    netinp=[]
+    netmap=[]
+    netop=[]
+    netopmp=[]
+    for el in entries:
+        df,dfy,dfc = gc.read_tfr_record(inpdir+el,
+            ['input','mask','counts'],['ar','ar','ar'], 
+            [tf.float32, tf.bool, tf.int8])
+        shar=np.arange(0,17,1)
+        np.random.shuffle(shar)
+        df=np.asarray([df[i] for i in shar])
+        dfy=np.asarray([dfy[i] for i in shar])
+        
+        dfy = np.reshape(dfy,(17,4000,3))
+        for i in range(maxex):
+            netinp.append(df[i,0:int(bin/2)])
+            netop.append(df[i,int(bin/2):int(bin/2+binpr)])
+            netmap.append(dfy[i,0:int(2000+bin/2),0])
+            netopmp.append(dfy[i,int(bin/2):int(bin/2+binpr),0])
+    net = np.asarray([[netinp[i], netmap[i], netop[i], netopmp[i]] for i in range(0,len(netmap))], dtype='object')
+    gc.write_tfr_record(pathout,net,
+        ['input','map', 'output','opmap'],['ar','ar','ar','ar'],['float32','float32','float32','float32'])
+
+
+anomalies_ts(TRAINING_MODULE+'full_lc_planets/','../../training_data/anomalies_ts2000_1000',4,2000,500)
+#cumulative_ts(TRAINING_MODULE+'new_loc_glob/',TRAINING_MODULE+'sem_seg_av/','../../training_data/total_ts_av_')
 #inst_segment(FILEPATH_FPS,'data_seg/',5000)
 #training_sample('data_seg/')
 #
@@ -1088,16 +1801,16 @@ def expand_ts(pathin, proc_path):
 #inst_seg_classifier(FILEPATH_FPS,'inst_seg/classifier/',4800)
 #sem_segment_one(FILEPATH_FPS,TRAINING_MODULE+'sem_seg_one/',4000)
 #sem_segment_clean(FILEPATH_DATA,TRAINING_MODULE+'sem_seg_clean/',12000)
-compr_sem_seg(FILEPATH_FPS,TRAINING_MODULE+'expand_test_and_noise/',4000)
+#compr_sem_seg_2(FILEPATH_FPS,TRAINING_MODULE+'full_lc_planets/',4000)
 #sem_segment_tot(FILEPATH_DATA,TRAINING_MODULE+'sem_seg_av/',4000)
-#sem_segment_tot(FILEPATH_FPS,TRAINING_MODULE+'sem_seg_av/',4000)
+#sem_segment_tot(FILEPATH_FPS,TRAINING _MODULE+'sem_seg_av/',4000)
 #plot_inst_seg('inst_seg/segment_map/',5)
 #sem_segment(FILEPATH_DATA,'sem_seg2/',4800)
 #inst_training_sample('inst_seg/',3200)
-#compr_sem_ts(TRAINING_MODULE+'sem_seg_ext/',1)
+#compr_sem_ts(TRAINING_MODULE+'sem_seg_av_2/',1,'../../training_data/trial_av_' )
+#cross_val_ts(TRAINING_MODULE+'sem_seg_av_2/',1,'../../training_data/cross_validation/zero_aug_' )
 #sem_training_sample_tot(TRAINING_MODULE+'sem_seg_av/')
-#expand_ts('../../training_data/seg_mask_test_av_aug', '../../processed_directories/sem_seg_ext/')
+#expand_ts_2('../../training_data/total_ts_av_test', '../../processed_directories/sem_seg_av/')
 
-#plot_compr_seg(TRAINING_MODULE+'sem_seg_ext/',5)
+#plot_compr_seg_2(TRAINING_MODULE+'sem_seg_rv/',4)
 #plt.show()
-

@@ -3,8 +3,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.interpolate import interp1d
-from astropy.io import ascii
+from astropy.io import ascii, fits
+import tensorflow as tf
+import GetLightcurves as gc
 import os
+
+FILEPATH = 'E:\Masters_Project_Data\\alienworlds_fps\\'
 
 def stitched_lc(pathin,tot,bp):
     X_train=[]
@@ -464,8 +468,66 @@ def raw_loc_glob(pathin,tot,bp,max_ex):
     #np.savetxt('training_data/Xtest_av.csv', np.array(X_test), delimiter=',')
     #np.savetxt('training_data/Ytest_av.csv', np.array(Y_test), delimiter=',')
 
+def remove_nan(red_flux,bins):
+    for i in range(0,len(red_flux)):
+        if(np.isnan(red_flux[i])):
+            t=1
+            try:
+                while(np.isnan(red_flux[i-t]) or np.isnan(red_flux[i+t])):    
+                    if(i-t == 0):
+                        red_flux[i]=red_flux[i+t]
+                        break
+                    elif(i+t == bins-1): 
+                        red_flux[i]=red_flux[i-t]
+                        break
+                    t+=1
+                red_flux[i]=(red_flux[i-t]+red_flux[i+t])/2
+            except:
+                red_flux[i]=0
+    for i in range(0,len(red_flux)):
+        if np.isnan(red_flux[i]):
+            red_flux[i]=0
+
+def remove_nan_2(red_flux,bins):
+    for i in range(0,len(red_flux)):
+        if np.isnan(red_flux[i]):
+            red_flux[i]=0
+
+def open_the_file_and_chunk(filepath, hdu_no):
+    hdu = fits.open(filepath)
+    flux=hdu[hdu_no].data['LC_DETREND']
+    #flux=hdu[len(hdu)-1].data['RESIDUAL_LC']
+    tdurs = [hdu[n].header['TPERIOD'] for n in range(1,len(hdu)-1)]
+    
+    remove_nan_2(flux,4000)
+    chunks = np.asarray([flux[i:i+4000] for i in range(0,len(flux)-4000, 4000)])
+    return(chunks, tdurs)
+
+def training_sample_dir(pathin, indir, fileout):
+    testid,label = gc.read_tfr_record(pathin, ['id','label'],['b','ar'],[tf.string,tf.bool])
+    #print(testid)
+    #testid=np.asarray(testid[:,0])
+    #print(len(testid))
+    #TestID2 = [testid[i].numpy() for i in range(0,len(testid))]
+    TestID2 = [str(testid[i])[2:11] for i in range(0,len(testid))]
+    #print(TestID2)
+    entries = os.listdir(indir)
+    oparr=[]
+    i=0
+    for ids in TestID2:
+        print(ids)
+        x=[el for el in entries if(el.find(ids)>0)]
+        print(x)
+        chunks, tdurs = open_the_file_and_chunk(indir+x[0],1)
+        oparr.append([chunks.reshape(-1),tdurs,ids,label[i]])
+        i+=1
+    gc.write_tfr_record(fileout, oparr, ['input','period','id','label'],
+        ['ar','ar','b','ar'], ['float32','float32','string','bool'])
+
+
 
 #stitched_lc('data_prelim_stitch/',6000,5000)
 #compr_TS('data_red_shortdur_6000/',6000,5000,2)
 #interp_TS('data_red_raw_dirty200/',6000,800,2) 
-raw_loc_glob('data_red_shortdur_6000/',6000,5000,2)
+#raw_loc_glob('data_red_shortdur_6000/',6000,5000,2)
+training_sample_dir('../../training_data/total_tstest',FILEPATH,'../../training_data/tstest')
