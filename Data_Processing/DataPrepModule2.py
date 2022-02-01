@@ -700,8 +700,8 @@ def compr_sem_seg_2(pathin, pathout, bins):
         except: continue
 
         loc=np.where(np.asarray(ref_kepid)==el[4:13])
-        if(not np.any(ref_label[loc[0]]=='PC')): 
-            print('no pl:',np.asarray(ref_label[loc[0]]))
+        if(np.all(ref_label[loc[0]]=='UNK')): 
+            print('all unk:',np.asarray(ref_label[loc[0]]))
             continue
 
         #get a preliminary phase... must center at least one transit
@@ -710,6 +710,11 @@ def compr_sem_seg_2(pathin, pathout, bins):
         lightcurve=[]
         totmask=[]
         counts=[]
+        tdurs=[hdu[i].header['TDUR'] for i in range(1,len(hdu)-2)]
+        tps=[hdu[i].header['TPERIOD'] for i in range(1,len(hdu)-2)]
+        tds=[hdu[i].header['TDEPTH'] for i in range(1,len(hdu)-2)]
+    
+
         for ind in ind_arr:
             
 
@@ -825,14 +830,15 @@ def compr_sem_seg_2(pathin, pathout, bins):
             print('miss',el[4:13])
             continue    
         
-        net = np.asarray([[lightcurve[i],totmask[i],counts[i]] for i in range(0,len(counts))], dtype='object')
+        net = np.asarray([[lightcurve[i],totmask[i],counts[i],tdurs,tps,tds] for i in range(0,len(counts))], dtype='object')
         gc.write_tfr_record(pathout+el[4:13],net,
-            ['input','mask','counts'],['ar','ar','ar'],['float32','bool', 'int8'])
+            ['input','mask','counts','tdur','tperiod','tdepth'],['ar','ar','ar','ar','ar','ar'],
+            ['float32','bool', 'int8','float16','float16','float16'])
         #np.savetxt(pathout+'xlabel/'+el[4:13],lightcurve,delimiter=' ')
         #np.savetxt(pathout+'ylabel/'+el[4:13],totmask,delimiter=' ')
         #np.savetxt(pathout+'counts/'+el[4:13],counts,delimiter=' ')
         print(tick,'hit:',el[4:13],np.asarray(lightcurve).shape,np.asarray(totmask).shape,
-            np.asarray(counts).shape,len(hdu)-2,np.asarray(ref_label[loc[0]]))
+            np.asarray(counts).shape,len(hdu)-2,np.asarray(ref_label[loc[0]]), tps)
 
 def plot_inst_seg(path,r):
     fig,ax = plt.subplots(r,r,figsize=(10,10))
@@ -1792,7 +1798,7 @@ def anomalies_ts(inpdir, pathout, maxex,bin, binpr):
         ['input','map', 'output','opmap'],['ar','ar','ar','ar'],['float32','float32','float32','float32'])
 
 
-anomalies_ts(TRAINING_MODULE+'full_lc_planets/','../../training_data/anomalies_ts2000_1000',4,2000,500)
+#anomalies_ts(TRAINING_MODULE+'full_lc_planets/','../../training_data/anomalies_ts2000_1000',4,2000,500)
 #cumulative_ts(TRAINING_MODULE+'new_loc_glob/',TRAINING_MODULE+'sem_seg_av/','../../training_data/total_ts_av_')
 #inst_segment(FILEPATH_FPS,'data_seg/',5000)
 #training_sample('data_seg/')
@@ -1801,7 +1807,7 @@ anomalies_ts(TRAINING_MODULE+'full_lc_planets/','../../training_data/anomalies_t
 #inst_seg_classifier(FILEPATH_FPS,'inst_seg/classifier/',4800)
 #sem_segment_one(FILEPATH_FPS,TRAINING_MODULE+'sem_seg_one/',4000)
 #sem_segment_clean(FILEPATH_DATA,TRAINING_MODULE+'sem_seg_clean/',12000)
-#compr_sem_seg_2(FILEPATH_FPS,TRAINING_MODULE+'full_lc_planets/',4000)
+compr_sem_seg_2(FILEPATH_FPS,TRAINING_MODULE+'full_lcs_all/',4000)
 #sem_segment_tot(FILEPATH_DATA,TRAINING_MODULE+'sem_seg_av/',4000)
 #sem_segment_tot(FILEPATH_FPS,TRAINING _MODULE+'sem_seg_av/',4000)
 #plot_inst_seg('inst_seg/segment_map/',5)
