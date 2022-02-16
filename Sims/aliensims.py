@@ -38,9 +38,9 @@ class Megastructure:
         self.centre = np.zeros(3)
 
         #kepler orbits
-        self.ecc = 0.5
+        self.ecc = 0.0
 
-        self.circ_res = 100
+        self.circ_res = 200
 
         if iscircle: 
             th = np.linspace(0, 2*np.pi, self.circ_res)
