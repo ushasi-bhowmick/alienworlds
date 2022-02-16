@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from numpy.core.fromnumeric import size
 import matplotlib.animation as animation
 
+
 plt.style.use('dark_background')
 fig, ax = plt.subplots(2,1,figsize=(8,10))
 xdata, ydata = [], []
@@ -18,13 +19,17 @@ thframe = np.pi*np.linspace(-1, 1, 300)
 Rstar = 10
 #Plcoordx = np.array([-4,4,4])
 #Plcoordy = np.array([0,4,-4])
-Plcoordx = 3*np.array([-1,-0.5,0.5,1,0.5,-0.5])
-Plcoordy = 3*np.array([0,-np.sqrt(3)/2,-np.sqrt(3)/2,0,np.sqrt(3)/2,np.sqrt(3)/2])
+#Plcoordx = 3*np.array([-1,-0.5,0.5,1,0.5,-0.5])
+#Plcoordy = 3*np.array([0,-np.sqrt(3)/2,-np.sqrt(3)/2,0,np.sqrt(3)/2,np.sqrt(3)/2])
+plth = np.linspace(-np.pi,np.pi, 50)
+Plcoordx = 3*np.cos(plth)
+Plcoordy = 3*np.sin(plth)
+
 Rorbit = 12
 elevation = 0
 
-ran_rad=Rstar*np.sqrt(np.random.rand(10000))
-ran_th=2*np.pi*np.random.rand(10000)
+ran_rad=Rstar*np.sqrt(np.random.rand(5000))
+ran_th=2*np.pi*np.random.rand(5000)
 
 #check if a point lies inside or outside a polygon
 def in_or_out(refx,refy,shx,shy):
@@ -109,7 +114,7 @@ def update(frame):
 ani = animation.FuncAnimation(fig, update, frames=thframe, interval=1,
                     init_func=init)
 
-writergif = animation.PillowWriter(fps=20) 
-ani.save('animation_dm_turn_2.gif', writer=writergif)
+#writergif = animation.PillowWriter(fps=20) 
+#ani.save('animation_dm_turn_2.gif', writer=writergif)
 
-#plt.show() 
+plt.show() 

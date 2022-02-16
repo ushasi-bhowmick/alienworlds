@@ -20,20 +20,26 @@ thframe = np.pi*np.linspace(-1, 1, 300)
 Rstar = 10
 #Plcoordx = np.array([-4,4,4])
 #Plcoordy = np.array([0,4,-4])
-Plcoordx = np.array([-1,-0.5,0.5,1,0.5,-0.5])
-Plcoordy = np.array([0,-np.sqrt(3)/2,-np.sqrt(3)/2,0,np.sqrt(3)/2,np.sqrt(3)/2])
+#Plcoordx = np.array([-1,-0.5,0.5,1,0.5,-0.5])
+#lcoordy = np.array([0,-np.sqrt(3)/2,-np.sqrt(3)/2,0,np.sqrt(3)/2,np.sqrt(3)/2])
+plth = np.linspace(-np.pi,np.pi, 100)
+Plcoordx = 2.5*np.cos(plth)
+Plcoordy = 2.5*np.sin(plth)
 Rorbit = 12
 elevation = 0
+rotation = True
 
 #multi abstract objects
-Allx = np.array([3*Plcoordx,2*Plcoordx,1*Plcoordx])
-Ally =  np.array([3*Plcoordy,2*Plcoordy,1*Plcoordy])
-Rorbits=[20,30,40]
-ph_offset=np.array([0,np.pi/3, np.pi/2])
-o_vel=np.array([2,1,3])
+Allx = np.array([Plcoordx,Plcoordx])
+Ally =  np.array([Plcoordy,Plcoordy])
+Rorbits=[20,20]
+#ph_offset=np.array([0,np.pi/3, np.pi/2])
+ph_offset=[0,0]
+o_vel=np.array([1,1])
+#rotation = [False, True]
 
-ran_rad=Rstar*np.sqrt(np.random.rand(1000))
-ran_th=2*np.pi*np.random.rand(1000)
+ran_rad=Rstar*np.sqrt(np.random.rand(6000))
+ran_th=2*np.pi*np.random.rand(6000)
 
 #check if a point lies inside or outside a polygon
 def in_or_out(refx,refy,shx,shy):
@@ -69,7 +75,7 @@ def monte_carlo(polyx, polyy):
 def monte_carlo_multi(polyx, polyy, frame):
     dists=[]
     for i in range(0,len(polyx)):
-        if(glp(o_vel[i]*frame+ph_offset)[i]>np.pi/2 and glp(o_vel[i]*frame+ph_offset[i])<3*np.pi/2): 
+        if(glp(o_vel[i]*frame+ph_offset[i])>np.pi/2 and glp(o_vel[i]*frame+ph_offset[i])<3*np.pi/2): 
             dists.append(np.zeros(len(ran_rad)))
         else: 
             distarr=np.asarray([in_or_out(ran_rad[j]*np.cos(ran_th[j]),ran_rad[j]*np.sin(ran_th[j]),polyx[i],polyy[i]) 
@@ -82,7 +88,12 @@ def get_transit_lc():
     shape_trajectory=[]
     lc = []
     for frame in thframe:
-        tcoordsh = np.transpose(np.asarray([y_rot(np.array([Plcoordx[i],Plcoordy[i],0]), frame) for i in range(len(Plcoordx))]))
+        if(rotation): 
+            tcoordsh = np.transpose(np.asarray([y_rot(np.array([Plcoordx[i],Plcoordy[i],0]), frame) 
+                for i in range(len(Plcoordx))]))
+        else: 
+            tcoordsh = np.transpose(np.asarray([np.array([Plcoordx[i],Plcoordy[i],0])
+                for i in range(len(Plcoordx))]))
         tcoordsh = np.asarray([Rorbit*np.sin(frame)*np.ones(len(Plcoordx))+tcoordsh[0],tcoordsh[1], 
             Rorbit*np.cos(frame)*np.ones(len(Plcoordx))+tcoordsh[2]])
 
@@ -92,7 +103,7 @@ def get_transit_lc():
             area = monte_carlo(tcoordsh[0],tcoordsh[1])
         shape_trajectory.append(tcoordsh)
         lc.append(1-area)
-
+    print(rotation)
     return(np.asarray(shape_trajectory), np.asarray(lc))
 
 def get_transit_lc_multi():
@@ -101,14 +112,16 @@ def get_transit_lc_multi():
     for frame in thframe:
         tcoordlist = []
         for x in range(0,len(Allx)):
-            tcoordsh = np.transpose(np.asarray([y_rot(np.array([Allx[x,i],Ally[x,i],0]), frame) for i in range(len(Allx[x]))]))
-            tcoordsh = np.asarray([Rorbit*np.sin(o_vel[x]*frame+ph_offset[x])*np.ones(len(Plcoordx))+tcoordsh[0],tcoordsh[1], 
-                Rorbit*np.cos(o_vel[x]*frame+ph_offset[x])*np.ones(len(Plcoordx))+tcoordsh[2]])
+            tcoordsh = np.transpose(np.asarray([y_rot(np.array([Allx[x,i],Ally[x,i],0]), 
+                o_vel[x]*frame+ph_offset[x]) if(rotation[x]) else [Allx[x,i],Ally[x,i],0] for i in range(len(Allx[x]))]))
+            tcoordsh = np.asarray([Rorbit*np.sin(o_vel[x]*frame+ph_offset[x])*np.ones(len(Plcoordx))+tcoordsh[0],
+                tcoordsh[1], Rorbit*np.cos(o_vel[x]*frame+ph_offset[x])*np.ones(len(Plcoordx))+tcoordsh[2]])
+    
             tcoordlist.append(tcoordsh)
 
         #print(np.asarray(tcoordlist).shape)
         tcoordlist = np.array(tcoordlist)
-        area = monte_carlo_multi(tcoordlist[:,0],tcoordlist[:,1], frame)
+        area = monte_carlo_multi(tcoordlist[:,0,:],tcoordlist[:,1,:], frame)
         shape_trajectory.append(tcoordlist)
         lc.append(1-area)
 
@@ -137,6 +150,10 @@ def init():
 def update(frame):
     ax[0].clear()
 
+    zst = 1
+    #zpls=np.asarray([3*(glp(o_vel[i]*thframe[frame]+ph_offset[i])<np.pi/2 or glp(o_vel[i]*thframe[frame]+ph_offset[i])>3*np.pi/2) 
+    #    for i in range(len(ph_offset))])
+    #print(thframe[frame],zpls)
     if(not thelc[frame]<1): 
         zst = 2
         zpl = 1
@@ -151,25 +168,44 @@ def update(frame):
     ax[0].set_xlim(-Rorbit*1.2,Rorbit*1.2)
     ax[0].set_ylim(-Rorbit*1.2,Rorbit*1.2)
 
-    #ax[0].fill(sh_tr[frame,0],sh_tr[frame,1], zorder=zpl, color='black', edgecolor='gray')
-    for i in range(len(Allx)):
-        ax[0].fill(sh_tr[frame,i,0],sh_tr[frame,i,1], zorder=zpl, color='black', edgecolor='gray')
+    ax[0].fill(sh_tr[frame,0],sh_tr[frame,1], zorder=zpl, color='black', edgecolor='gray')
+    #for i in range(len(Allx)):
+    #    ax[0].fill(sh_tr[frame,i,0],sh_tr[frame,i,1], zorder=zpls[i], color='black', edgecolor='gray')
     ax[1].scatter(thframe[frame], thelc[frame], color='red', marker='.')
     return ln,
  
-sh_tr, thelc = get_transit_lc_multi()
-#np.random.shuffle(ran_rad)
-#sh_tr, lc2 = get_transit_lc()
-#np.random.shuffle(ran_th)
-#sh_tr, lc3 = get_transit_lc()
-#thelc = np.mean(np.array([lc1,lc2,lc3]), axis=0)
+sh_tr, lc1 = get_transit_lc()
+np.random.shuffle(ran_rad)
+sh_tr, lc2 = get_transit_lc()
+np.random.shuffle(ran_th)
+sh_tr, lc3 = get_transit_lc()
+thelc = np.mean(np.array([lc1,lc2,lc3]), axis=0)
+
+rotation = False
+sh_trb, lc1b = get_transit_lc()
+np.random.shuffle(ran_rad)
+sh_trb, lc2b = get_transit_lc()
+np.random.shuffle(ran_th)
+sh_trb, lc3b = get_transit_lc()
+thelcb = np.mean(np.array([lc1b,lc2b,lc3b]), axis=0)
 
 print("--- %s seconds ---" % (time.time() - start_time))
 print("here:", sh_tr.shape, thelc.shape)
-ani = animation.FuncAnimation(fig, update, frames=np.arange(0,len(thframe)), interval=1,
-                    init_func=init)
+
+
+#temp plots:
+fig2, ax2 = plt.subplots(1,1,figsize=(10,10))
+ax2.set_xlabel('Phase')
+ax2.set_ylabel('Flux')
+ax2.plot(thframe,thelc,label = '2d')
+ax2.plot(thframe,thelcb, label = '3d')
+ax2.legend()
+
+plt.savefig('2d3d.png')
+#ani = animation.FuncAnimation(fig, update, frames=np.arange(0,len(thframe)), interval=1,
+#                    init_func=init)
 
 #writergif = animation.PillowWriter(fps=20) 
-#ani.save('animation_dm_turn_4.gif', writer=writergif)
+#ani.save('animation_dm_turn_5.gif', writer=writergif)
 
 plt.show() 
