@@ -13,7 +13,7 @@ start_time = time.time()
 
 def test_multi_loops_3d(x):
     np.random.seed(1234*x)
-    sim_3d = dysim.Simulator (100, 30000, 500, np.pi/3)
+    sim_3d = dysim.Simulator (100, 50000, 700, np.pi/3)
     meg_3d = dysim.Megastructure(200, True, 5)
     sim_3d.add_megs(meg_3d)
     sim_3d.simulate_transit()
@@ -21,7 +21,7 @@ def test_multi_loops_3d(x):
 
 def test_multi_loops_2d(x):
     np.random.seed(3456*x)
-    sim_2d = dysim.Simulator (100, 30000, 500, np.pi/3)
+    sim_2d = dysim.Simulator (100, 50000, 700, np.pi/3)
     th = np.linspace(0, 2*np.pi, 120)
     Plcoord = np.array([[10*np.cos(el), 10*np.sin(el), 0] for el in th])
     meg_2d = dysim.Megastructure(200, False, Plcoords=0.5*Plcoord, isrot=True)
