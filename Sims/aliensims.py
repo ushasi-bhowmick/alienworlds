@@ -39,6 +39,7 @@ class Megastructure:
 
         #kepler orbits
         self.ecc = 0.0
+        self.periapsis_offset = np.pi/2
 
         self.circ_res = 200
 
@@ -74,7 +75,7 @@ class Megastructure:
         return(temp)
 
     def translate(self, frm):
-        kep_corr = self.Rorbit*(1-self.ecc**2)/(1+self.ecc*np.cos(self.o_vel*frm+self.ph_offset))
+        kep_corr = self.Rorbit*(1-self.ecc**2)/(1+self.ecc*np.cos(self.o_vel*frm+self.ph_offset-self.periapsis_offset))
         xt = kep_corr*np.sin(self.o_vel*frm+self.ph_offset)
         zt = kep_corr*np.cos(self.o_vel*frm+self.ph_offset)
         yt = self.elevation
@@ -195,7 +196,7 @@ class Transit_Animate:
         self.ln.set_data([], [])
         self.ax2.set_xlabel('Phase')
         self.ax1.set_anchor('W')
-        self.ax1.tick_params(left = False, right = False , labelleft = False ,labelbottom = False, bottom = False)
+        #self.ax1.tick_params(left = False, right = False , labelleft = False ,labelbottom = False, bottom = False)
         self.ax3.tick_params(left = False, right = False , labelleft = False ,labelbottom = False, bottom = False)
         self.ax2.set_ylabel('Flux')
         theta = np.arange(-2 * np.pi, 2 * np.pi+np.pi/2, step=(np.pi / 2))
@@ -207,10 +208,11 @@ class Transit_Animate:
 
         t_rpls = [max(np.abs(el.Plcoords.reshape(-1)))/self.gopath.Rstar if(not el.iscircle) 
             else el.Rcircle/self.gopath.Rstar for el in self.megs]
+        temp = np.array([[x['x'] for x in el] for el in self.gopath.traj])
+        self.maxorb = max(np.abs(temp.reshape(-1)))
         t_orbs = [el.Rorbit for el in self.megs]
         t_offs = [round(el.ph_offset/np.pi,3) for el in self.megs]
         t_vels = [el.o_vel for el in self.megs]
-        self.maxorb = max(t_orbs)
 
         props = dict(boxstyle='round', facecolor='wheat', alpha=0.5, pad=1)
         txt = "$R_{pl}:$"+str(t_rpls)+"$R_{star}$\nOrbit:"+str(t_orbs)+"\nOffset:"+str(t_offs)+"$\pi$\nVelocity:"+str(t_vels)
@@ -246,16 +248,15 @@ class Transit_Animate:
 
 #4rth class for a plotting and saving data library
 
-'''sim1 = Simulator(100, 1000, 100, np.pi)
-sim2 = Simulator(100, 1000, 100, np.pi)
+sim1 = Simulator(100, 1000, 100, np.pi)
 
 th = np.linspace(0, 2*np.pi, 120)
 Plcoord = np.array([[10*np.cos(el), 10*np.sin(el), 0] for el in th])
 
-meg_2d = Megastructure(200, False, Plcoords=1*Plcoord, isrot=True)
-meg_3d = Megastructure(200, True, 10, ph_offset=np.pi/3, elevation=30)
+meg_2d = Megastructure(200, True, 10, isrot=True)
+meg_3d = Megastructure(300, True, 10, elevation=0)
 sim1.add_megs(meg_3d)
-sim1.add_megs(meg_2d)
+#sim1.add_megs(meg_2d)
 
 sim1.simulate_transit()
 

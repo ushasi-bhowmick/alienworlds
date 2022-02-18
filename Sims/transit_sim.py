@@ -27,8 +27,10 @@ ph_offset=np.array([0,np.pi/3, np.pi/2])
 o_vel=np.array([2,1,3])
 #ph_offset = np.array([0,0,0])
 
-ran_rad=Rstar*np.sqrt(np.random.rand(5000))
-ran_th=2*np.pi*np.random.rand(5000)
+#ran_rad=Rstar*np.sqrt(np.random.rand(1000))
+ran_th=2*np.pi*np.random.rand(6000)
+u=0.6
+ran_rad=Rstar*(1-np.sqrt(1-((np.random.rand(6000) - (1-u))/u)**2))
 
 
 def glp(el): 
@@ -117,10 +119,10 @@ def update_multi(frame):
     
 
 
-ani = animation.FuncAnimation(fig, update_multi, frames=thframe, interval=1,
+ani = animation.FuncAnimation(fig, update, frames=thframe, interval=1,
                     init_func=init)
 
-writergif = animation.PillowWriter(fps=20) 
-ani.save('animation_mpl_3.gif', writer=writergif)
+#writergif = animation.PillowWriter(fps=20) 
+#ani.save('animation_mpl_3.gif', writer=writergif)
 
-#plt.show() 
+plt.show() 
