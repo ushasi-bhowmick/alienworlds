@@ -38,7 +38,7 @@ class Megastructure:
         self.centre = np.zeros(3)
 
         #kepler orbits
-        self.ecc = 0.0
+        self.ecc = 0.3
         self.periapsis_offset = np.pi/2
 
         self.circ_res = 200
@@ -248,7 +248,7 @@ class Transit_Animate:
 
 #4rth class for a plotting and saving data library
 
-sim1 = Simulator(100, 1000, 100, np.pi)
+'''sim1 = Simulator(100, 1000, 100, np.pi)
 
 th = np.linspace(0, 2*np.pi, 120)
 Plcoord = np.array([[10*np.cos(el), 10*np.sin(el), 0] for el in th])
