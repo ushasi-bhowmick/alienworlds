@@ -13,18 +13,18 @@ start_time = time.time()
 
 def test_multi_loops_3d(x):
     np.random.seed(1234*x)
-    sim_3d = dysim.Simulator (100, 5000, 100, np.pi/3)
-    meg_3d = dysim.Megastructure(200, True, 20)
+    sim_3d = dysim.Simulator (100, 20000, 500, np.pi/3)
+    meg_3d = dysim.Megastructure(200, True, 10)
     sim_3d.add_megs(meg_3d)
     sim_3d.simulate_transit()
     return(sim_3d.lc)
 
 def test_multi_loops_2d(x):
     np.random.seed(3456*x)
-    sim_2d = dysim.Simulator (100, 5000, 100, np.pi/3)
+    sim_2d = dysim.Simulator (100, 20000, 500, np.pi/3)
     th = np.linspace(0, 2*np.pi, 120)
     Plcoord = np.array([[10*np.cos(el), 10*np.sin(el), 0] for el in th])
-    meg_2d = dysim.Megastructure(200, False, Plcoords=2*Plcoord, isrot=True)
+    meg_2d = dysim.Megastructure(200, False, Plcoords=Plcoord, isrot=True)
     sim_2d.add_megs(meg_2d)
     sim_2d.simulate_transit()
     return(sim_2d.lc)
@@ -33,12 +33,12 @@ def test_multi_loops_2d(x):
 
 if __name__ == '__main__':
     # start 4 worker processes
-    with Pool(processes=4) as pool:
-        lc2dsum = np.asarray(pool.map(test_multi_loops_2d, range(8)))
+    with Pool(processes=30) as pool:
+        lc2dsum = np.asarray(pool.map(test_multi_loops_2d, range(60)))
         lc2d = np.mean(lc2dsum, axis = 0)
         print("--- %s seconds ---" % (time.time() - start_time))
 
-        lc3dsum = np.asarray(pool.map(test_multi_loops_3d, range(8)))
+        lc3dsum = np.asarray(pool.map(test_multi_loops_3d, range(60)))
         print("--- %s seconds ---" % (time.time() - start_time))
 
         lc3d = np.mean(lc3dsum, axis = 0)
@@ -58,13 +58,13 @@ if __name__ == '__main__':
     ax[1].set_xlabel('Phase')
     ax[1].set_ylabel('Flux')
     ax[0].set_ylabel('Flux')
-    ax[0].set_title("$R_{pl}$ = 0.1 $R_{st}$, Orbit: 200")
+    ax[0].set_title("$R_{pl}$ = 0.1 $R_{st}$, Orbit: 200, u: 0.6, e=0.0")
     ax[1].set_title('Residual')
     ax[1].legend()
     plt.suptitle('2D vs 3D transiting objects')
-    #np.savetxt('2d3d_0.1R_kep.csv', np.transpose(np.array([frm, lc2d, lc3d])),delimiter=' ', header='frame, 2d, 3d')
-    #plt.savefig('2d3d_res_0.1R_kep.png')
-    plt.show()
+    np.savetxt('2d3d_0.1R_limb_circ.csv', np.transpose(np.array([frm, lc2d, lc3d])),delimiter=' ', header='frame, 2d, 3d')
+    plt.savefig('2d3d_res_0.1R_limb_circ.png')
+    #plt.show()
 
 '''start_time = time.time()
 

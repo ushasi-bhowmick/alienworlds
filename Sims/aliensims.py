@@ -163,7 +163,7 @@ class Simulator:
         self.tmegs = []
 
         #limb darkening coefficient
-        self.limb_coeff = 0.0
+        self.limb_coeff = 0.6
 
         self.ran_rad=[]
         self.ran_th=[]
@@ -195,7 +195,6 @@ class Simulator:
         for el in np.sqrt(np.random.rand(self.no_pt)):
             sol = root_scalar(self.Prob,args=(el,self.limb_coeff),bracket=[0,1])
             ran_x.append(sol.root)
-        print(self.limb_coeff)
         self.ran_rad = self.Rstar*np.array(ran_x)
         self.road = Path(len(self.megs), self.Rstar)
 
@@ -220,6 +219,7 @@ class Simulator:
     #instead of coordinates these will work on elements of class megastructure
     def monte_carlo_multi(self, frame): 
         dists=[]
+        
 
         for meg in self.tmegs:
             if(meg.glp(frame)>np.pi/2 and meg.glp(frame)<3*np.pi/2): dists.append(np.zeros(self.no_pt))
@@ -237,6 +237,7 @@ class Simulator:
         return(frac)
 
     def simulate_transit(self):
+        #print("Limb Darkening Coefficient:",self.limb_coeff)
         self.tmegs = copy.deepcopy(self.megs)
         self.lc = []
         self.road = Path(len(self.megs), self.Rstar)
