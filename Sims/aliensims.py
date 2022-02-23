@@ -70,8 +70,11 @@ class Path:
 
 class Megastructure:
 
+    set = 0
+
     def __init__(self, Rorb=1.0, iscircle = False, Rcircle = 1.0, isrot = False, ph_offset = 0.0, 
         o_vel = 1.0, elevation = 0.0, Plcoords=[]):
+        Megastructure.set+=1
         self.iscircle = iscircle
         self.isrot = isrot
         self.rot_axis = [0,1,0]
@@ -85,8 +88,8 @@ class Megastructure:
         self.centre = np.zeros(3)
 
         #kepler orbits
-        self.ecc = 0.0
-        self.periapsis_offset = 0
+        self.ecc = 0.5
+        self.periapsis_offset = np.pi/2
 
         self.circ_res = 200
 
