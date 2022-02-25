@@ -62,10 +62,18 @@ class Path:
     def __init__(self, megnum, Rstar):
         self.traj = [[] for i in range(megnum)]
         self.Rstar = Rstar
+        self.centres = [[] for _ in range(megnum)]
+        self.MCscatter_x = []
+        self.MCscatter_y = []
+
+    def add_random_no(self,x,y):
+        self.MCscatter_x=x
+        self.MCscatter_y=y
 
     def add_frame(self,megs):
         for i in range(len(megs)):
             self.traj[i].append({'x':megs[i].Plcoords[:,0], 'y': megs[i].Plcoords[:,1], 'z':megs[i].Plcoords[:,2]})
+            self.centres[i].append(megs[i].centre)
 
 
 class Megastructure:
@@ -88,8 +96,8 @@ class Megastructure:
         self.centre = np.zeros(3)
 
         #kepler orbits
-        self.ecc = 0.5
-        self.periapsis_offset = np.pi/2
+        self.ecc = 0.0
+        self.periapsis_offset = 0.0
 
         self.circ_res = 200
 
@@ -154,7 +162,7 @@ class Megastructure:
 
 #2nd class to simulate a bunch of transits... taking in data from the first class.
 class Simulator:
-    def __init__(self, Rstar, no_pt, frame_no, frame_length = np.pi):
+    def __init__(self, Rstar, no_pt, frame_no, frame_length = np.pi, limb=0.0):
         self.megs = []
 
         self.lc = []
@@ -166,7 +174,7 @@ class Simulator:
         self.tmegs = []
 
         #limb darkening coefficient
-        self.limb_coeff = 0.6
+        self.limb_coeff = limb
 
         self.ran_rad=[]
         self.ran_th=[]
@@ -245,6 +253,8 @@ class Simulator:
         self.lc = []
         self.road = Path(len(self.megs), self.Rstar)
 
+        self.road.add_random_no(self.ran_rad*np.sin(self.ran_th), self.ran_rad*np.cos(self.ran_th))
+
         for frame in self.frames:
             for i in range(len(self.megs)):
                 if self.megs[i].isrot: 
@@ -260,6 +270,8 @@ class Simulator:
             area = self.monte_carlo_multi(frame)
             self.road.add_frame(self.tmegs)
             self.lc.append(1-area)
+
+        return(self.road, self.lc  )
 
 
 #3rd class is the animation library containing modules to make the animation
@@ -327,11 +339,12 @@ class Transit_Animate:
         self.ax2.scatter(self.phase[frame], self.lc[frame], color='red', marker='.')
         return self.ln,
 
-    def go(self):
+    def go(self,ifsave=False,filepath=""):
         ani = animation.FuncAnimation(self.fig, self.update, frames=np.arange(0,len(self.phase)), interval=1,init_func=self.init_frame)
-        writergif = animation.PillowWriter(fps=20) 
-        ani.save('dyson_swarm_take2.gif', writer=writergif)
-        #plt.show()
+        if(ifsave):
+            writergif = animation.PillowWriter(fps=20) 
+            ani.save(filepath, writer=writergif)
+        else: plt.show()
 
 
 #4rth class for a plotting and saving data library
