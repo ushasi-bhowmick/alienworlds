@@ -22,6 +22,7 @@ GLOBAL_VIEW=2000
 LOCAL_VIEW=200
 FILEPATH_FPS="E:\Masters_Project_Data\\alienworlds_fps\\"
 FILEPATH_DATA="E:\Masters_Project_Data\\alienworlds_data\\"
+CATALOG="../../Catalogs/"
 
 def rebin(x,y,tr_dur,tr_pd):
     #change relevant stuff to days format from hours format
@@ -126,7 +127,7 @@ def improve_local_view(pathin,pathout,globsize,locsize,count_max,datname):
             df_gl_y=np.array(temp)[:,1]
     
             print('int:',len(df_gl_x),len(df_gl_y))
-            func=interp1d(df_gl_x,df_gl_y,kind='quadratic',fill_value='extrapolate')
+            func=interp1d(df_gl_x,df_gl_y,kind='quadratic',fill_value='interpolate')
             df_gl_x=bins[:-1]
             df_gl_y=func(bins[:-1])
             print('fin:',len(df_gl_x),len(df_gl_y))
@@ -817,15 +818,55 @@ def extract(func,pathin,pathout,size):
             print(x,len(df_gl),len(df_lc),el.name[4:13])
 
 
+def extract_with_model(func,pathin,pathout,size):
+    entries=os.listdir(pathin)
+    np.random.shuffle(entries)
+    av_entry=ascii.read(CATALOG+'robovetter_label.dat')
+    av_pl=np.array(av_entry['tce_plnt_num'])
+    ref_kepid=[('0000'+str(el)[:9])[-9:] for el in av_entry['kepid']]
+    ref_label=av_entry['label']
+
+    x=0
+    for el in entries:
+        hdu = fits.open(pathin+el)
+        n=len(hdu)
+        x=x+1
+        loc=np.where(np.asarray(ref_kepid)==el[4:13])[0]
+        if(len(loc)==0): continue
+        if(np.any(ref_label[loc]=='FPS')): 
+            print(np.array(ref_label[loc]))
+            continue
+
+        if(x==size): break
+        for i in range(1,n-1):
+            if(hdu[i].header['TDUR']==None or hdu[i].header['TPERIOD']==None): continue
+            phase=hdu[i].data['PHASE']
+            period=hdu[i].header['TPERIOD']
+            flux=hdu[i].data['LC_WHITE'] 
+            model=hdu[i].data['MODEL_WHITE'] 
+            if(np.all(np.isnan(model))): 
+                print('no model')
+                continue
+            df_lc,df_gl=func(phase,flux,hdu[i].header['TDUR'],period)
+            df_lc_m,df_gl_m=func(phase,model,hdu[i].header['TDUR'],period)
+
+            df1lc = pd.DataFrame(list(zip(df_lc['phase'], df_lc['flux'], df_lc_m['flux'])),columns =['phase_l', 'flux_l', 'model_l'])
+            df2lc = pd.DataFrame(list(zip(df_gl['phase'], df_gl['flux'], df_gl_m['flux'])),columns =['phase_g', 'flux_g', 'model_g'])
+            df = [df1lc, df2lc]
+            df = pd.concat(df, axis=1)
+            df.to_csv(pathout+el[4:13]+'_'+str(i)+'.csv',index=False)
+            print(x,len(df_gl),len(df_lc),el[4:13])
+
+
 
 #here just call out the extract function with whatever values are needed...
 #extract(remove_rebin,FILEPATH_DATA,'nonpl_red',13)
-#extract(rebin,FILEPATH_FPS,'temp_dir',4000)
+extract_with_model(rebin,FILEPATH_FPS,'../../processed_directories/find_circles/',10000)
 #get_threesome_raw(FILEPATH_FPS,"data_prelim_stitch/") 
 #get_shorter_ones(6000,FILEPATH_DATA,'data_red_shortdur_6000/')
 #rebin_the_raw(3000,1000,FILEPATH_FPS,'raw_rebin2000/')
 #transit_only(FILEPATH_DATA,'data_stitch_prelim/')
-improve_local_view(FILEPATH_FPS,'../../processed_directories/new_loc_glob/',2000,200,4000,'probdat2')
+#improve_local_view(FILEPATH_FPS,'../../processed_directories/new_loc_glob/',2000,200,4000,'probdat2')
 #improve_local_view(FILEPATH_DATA,'new_loc_glob',2000,200,4000,'probdat_pl')
 #get_transits_from_raw(500,FILEPATH_DATA,'data_red_raw_dirty500/')
 #get_transits_from_raw(500,FILEPATH_FPS,'data_red_raw_dirty500/')

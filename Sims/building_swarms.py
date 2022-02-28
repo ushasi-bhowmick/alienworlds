@@ -12,11 +12,11 @@ start_time = time.time()
 #redo the animation frames coz this is slightly different...
 #we start by randomly placing panels on the dyson sphere
 
-n = 9
+n = 15
 Rst = 100
-no_pt = 100
+no_pt = 200
 Rorb =200
-maxout = 3
+maxout = 10
 rinp = 0.9*np.pi*Rorb/(n*np.sqrt(2))
 print(rinp)
 
@@ -38,7 +38,7 @@ print("Total:",len(np.array(possibilities)), np.array(possibilities).shape)
 sum_road = []
 sum_lc = []
 
-sim1 = dy.Simulator(Rst, 1000, no_pt, np.pi, limb=0.0)
+sim1 = dy.Simulator(Rst, 10000, no_pt, np.pi, limb=0.0)
 
 for it in range(0,maxout):
     sim1.megs=[]
@@ -87,7 +87,7 @@ temp = np.array([[x['x'] for x in el] for el in road.traj])
 maxorb = max(np.abs(temp.reshape(-1)))
 thframe = np.linspace(-np.pi,np.pi,no_pt)
 
-fr_sum = np.tile(np.arange(0,no_pt,2), maxout)
+fr_sum = np.tile(np.arange(0,no_pt,3), maxout)
 
 
 
@@ -175,7 +175,7 @@ ani = animation.FuncAnimation(fig, update, frames=fr_sum, interval=1,
 
 print(np.array(net).shape)
 np.savetxt('sphere_conc_1.csv',net,delimiter=' ', header='phase, panels:1,2,4,8,16...')
-#writergif = animation.PillowWriter(fps=20) 
-#ani.save('completed_sphere.gif', writer=writergif, savefig_kwargs=dict(facecolor='#101010'))
+writergif = animation.PillowWriter(fps=20) 
+ani.save('completed_sphere.gif', writer=writergif, savefig_kwargs=dict(facecolor='#101010'))
 
-plt.show() 
+#plt.show() 
