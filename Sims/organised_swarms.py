@@ -1,5 +1,5 @@
 import random
-from turtle import color
+from turtle import color, pos
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -11,50 +11,88 @@ start_time = time.time()
 
 #redo the animation frames coz this is slightly different...
 #we start by randomly placing panels on the dyson sphere
+n = 35
+phi = 2*np.pi/n
 
-n = 7
-Rst = 100
-no_pt = 100
+Rstar = 100
 Rorb =200
-maxout = 4
-rinp = 0.9*np.pi*Rorb/(n*np.sqrt(2))
-print(rinp)
+a = 2*np.pi*Rorb/n
+no_pt = 200
+maxout = 11
 
 
 #random initialization of dyson swarm.
 possibilities=[]
 
 
-for j in range(-int(n/2),int(n/2)+1):
-    newn = int(np.pi*Rorb*np.cos(j*np.pi/n)/(rinp*np.sqrt(2)))
-    if(j==0): newn=n
-    for i in range(0,2*int(newn)):
-        possibilities.append([j,i, newn])
+for j in range(-int(n/4),int(n/4)+1):
+    for i in range(0,n):
+        possibilities.append([j,i])
 
-#np.random.shuffle(possibilities)
+np.random.shuffle(possibilities)
+
 print("Total:",len(np.array(possibilities)), np.array(possibilities).shape)
+#print(possibilities)
+possibilities = np.array(possibilities)
+
+#every iteration increment or decrement i or j ... if we run out of elements 
+#we'll see
+xmax = max(possibilities[:,0])
+xmin = min(possibilities[:,0])
+ymin = min(possibilities[:,1])
+ymax = max(possibilities[:,1])
+
 
 sum_road = []
 sum_lc = []
 
-sim1 = dy.Simulator(Rst, 1000, no_pt, np.pi, limb=0.0)
-
+sim1 = dy.Simulator(Rstar, 5000, no_pt, np.pi, limb=0.0)
+stash=np.array([[0,0]])
 for it in range(0,maxout):
     sim1.megs=[]
-    for el in possibilities[:int(2**it)]:
+    new=list(np.copy(stash))
+    ind = np.array([np.where((possibilities == np.array(el)).all(axis=1))[0] for el in stash]).reshape(-1)
+    #print(ind)
+    possibilities_left=np.delete(possibilities,ind, axis=0)
+    #print(possibilities_left.shape, len(stash))
+  
+    x=-1
+    while (len(new)<2**it):
+        #print(2**it,len(new), len(possibilities_left))
+        x+=1
+        if(len(possibilities_left)==0): break
+        if(x>=len(possibilities_left)): x=0
+        temp=possibilities_left[x]
+        if(np.any((np.array(new)==temp+np.array([1,0])).all(axis=1))): new.append(temp)
+        elif(np.any((np.array(new)==temp+np.array([-1,0])).all(axis=1))): new.append(temp)
+        elif(np.any((np.array(new)==temp+np.array([0,1])).all(axis=1))): new.append(temp)
+        elif(np.any((np.array(new)==temp+np.array([0,-1])).all(axis=1))): new.append(temp)
+        else: continue
+        possibilities_left=np.delete(possibilities_left,x, axis=0)
+
+    stash = np.copy(new)
+
+    for el in stash:
+
         j=el[0]
         i=el[1]
-        newn = el[2]
-        meg = dy.Megastructure(Rorb*np.cos(j*np.pi/n), False, isrot=True,elevation=Rorb*np.sin(j*np.pi/n), ph_offset=i*np.pi/newn)
-        meg.Plcoords = meg.regular_polygons_2d(rinp, 4)
-        meg.Plcoords=meg.rotate([0,0,1],np.pi/4)
-        meg.Plcoords=meg.rotate([1,0,0],-j*np.pi/n)
-        meg.Plcoords=meg.rotate([0,1,0],i*np.pi/newn)
+        ang1 = j*phi
+        ang2 = j*phi
+        if(j*phi+phi/2 > np.pi/2): ang1 = np.pi/2 - phi/2
+        elif(j*phi-phi/2 < -np.pi/2): ang2 = np.pi/2 + phi/2
+        a1=2*np.pi*Rorb*np.cos(ang1+phi/2)/n
+        a2=2*np.pi*Rorb*np.cos(ang2-phi/2)/n
+        a=2*np.pi*Rorb*np.cos(j*phi)/n
+        coords=np.array([[a1/2,a/2,0],[-a1/2,a/2,0],[-a2/2,-a/2,0],[a2/2,-a/2,0]])
+        meg = dy.Megastructure(Rorb*np.cos(j*phi), False, isrot=True,elevation=Rorb*np.sin(j*phi), Plcoords=coords, ph_offset=i*phi)
+        
+        meg.Plcoords=meg.rotate([1,0,0],-j*phi)
+        meg.Plcoords=meg.rotate([0,1,0],i*phi)
         sim1.add_megs(meg)
     #possibilities = np.delete(possibilities, np.arange(0,track_ind), axis = 0)
     #print("check total:", len(possibilities))
         
-    print("Accepted:",len(sim1.megs))
+    print("Accepted:",len(sim1.megs), len(stash))
     road, lc = sim1.simulate_transit()
     sum_road.append(road)
     sum_lc.append(lc)
@@ -111,7 +149,7 @@ def init():
     ax3.spines['left'].set_visible(False)
 
     props = dict(boxstyle='round', facecolor='black', alpha=0.5, pad=1)
-    txt = "Panel: "+str(np.round(rinp*np.sqrt(2)/Rst,2))+"$R_{st}$\nOrbit: "+str(Rorb/Rst)+"$R_{st}$\nu: "+str(0
+    txt = "Main Panel: "+str(np.round(2*np.pi*Rorb/(n*Rstar),2))+"$R_{st}$\nOrbit: "+str(Rorb/Rstar)+"$R_{st}$\nu: "+str(0
         )+"\ne: "+str(0)
 
     ax3.text(0.5, 0.3, txt, fontsize=9,transform=ax3.transAxes,  horizontalalignment='center',
@@ -173,8 +211,8 @@ ani = animation.FuncAnimation(fig, update, frames=fr_sum, interval=1,
                     init_func=init)
 
 print(np.array(net).shape)
-#np.savetxt('sphere_conc_1.csv',net,delimiter=' ', header='phase, panels:1,2,4,8,16...')
-#writergif = animation.PillowWriter(fps=20) 
-#ani.save('completed_sphere.gif', writer=writergif, savefig_kwargs=dict(facecolor='#101010'))
+np.savetxt('sphere_conc_org_1.csv',net,delimiter=' ', header='phase, panels:1,2,4,8,16...')
+writergif = animation.PillowWriter(fps=15) 
+ani.save('completed_sphere_org_1.gif', writer=writergif, savefig_kwargs=dict(facecolor='#101010'))
 
-plt.show() 
+#plt.show()
