@@ -81,7 +81,7 @@ class Megastructure:
     set = 0
 
     def __init__(self, Rorb=1.0, iscircle = False, Rcircle = 1.0, isrot = False, ph_offset = 0.0, 
-        o_vel = 1.0, elevation = 0.0, Plcoords=[]):
+        o_vel = 1.0, elevation = 0.0, Plcoords=[], ecc=0.0, per_off=0.0):
         Megastructure.set+=1
         self.iscircle = iscircle
         self.isrot = isrot
@@ -96,8 +96,8 @@ class Megastructure:
         self.centre = np.zeros(3)
 
         #kepler orbits
-        self.ecc = 0.0
-        self.periapsis_offset = 0.0
+        self.ecc = ecc
+        self.periapsis_offset = per_off
 
         self.circ_res = 200
 
@@ -162,7 +162,7 @@ class Megastructure:
 
 #2nd class to simulate a bunch of transits... taking in data from the first class.
 class Simulator:
-    def __init__(self, Rstar, no_pt, frame_no, frame_length = np.pi, limb=0.0):
+    def __init__(self, Rstar, no_pt, frame_no, frame_length = np.pi, limb_u1=0.0, limb_u2=0.0):
         self.megs = []
 
         self.lc = []
@@ -174,7 +174,8 @@ class Simulator:
         self.tmegs = []
 
         #limb darkening coefficient
-        self.limb_coeff = limb
+        self.lmb_u = limb_u1
+        self.lmb_v = limb_u2
 
         self.ran_rad=[]
         self.ran_th=[]
@@ -183,10 +184,13 @@ class Simulator:
 
         self.initialize()
 
-    def Prob(self, x, z, u):
-        R=1
-        k=(1-u)*R+u*np.pi*R/4
-        y = ((1-u)*x + u*x*np.sqrt(R**2-x**2)/2*R + u*R*np.arcsin(x/R)/2)/k -z
+    def Prob(self, x, z, u, v):
+        a=1
+        #R=1
+        #k=(1-u)*R+u*np.pi*R/4
+        #y = ((1-u)*x + u*x*np.sqrt(R**2-x**2)/2*R + u*R*np.arcsin(x/R)/2)/k -z
+        k = (1-u-5*v/3)*a + (u+2*v)*np.pi*a/4
+        y = ((1-u-2*v)*x + v*x**3/(3*a**2) + ((u+2*v)/a)*(x*np.sqrt(a**2 - x**2)/2 + a**2*np.arcsin(x/a)/2))/k - z
         return(y)
 
     def add_megs(self,meg):
@@ -204,7 +208,7 @@ class Simulator:
         self.lc=[]
         ran_x = [] 
         for el in np.sqrt(np.random.rand(self.no_pt)):
-            sol = root_scalar(self.Prob,args=(el,self.limb_coeff),bracket=[0,1])
+            sol = root_scalar(self.Prob,args=(el,self.lmb_u, self.lmb_v),bracket=[0,1])
             ran_x.append(sol.root)
         self.ran_rad = self.Rstar*np.array(ran_x)
         self.road = Path(len(self.megs), self.Rstar)
@@ -271,7 +275,7 @@ class Simulator:
             self.road.add_frame(self.tmegs)
             self.lc.append(1-area)
 
-        return(self.road, self.lc  )
+        return(self.road, self.frames, self.lc)
 
 
 #3rd class is the animation library containing modules to make the animation
