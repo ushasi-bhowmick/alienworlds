@@ -7,8 +7,9 @@ import os
 from astropy.io import ascii
 
 import GetLightcurves as gc
+from transit import occultnonlin, occultquad
 
-entries = os.listdir('../../processed_directories/go_circles/find_circles/')
+entries = os.listdir('../../processed_directories/go_circles/fit_circles_rel/')
 rv_entry=ascii.read('../../Catalogs/robovetter_label.dat')
 rv_pl=np.array(rv_entry['tce_plnt_num'])
 rv_label = rv_entry['label']
@@ -25,10 +26,11 @@ av_timeerr=av_entry['tce_duration_err']
 '''fig, axs = plt.subplots(4,4,figsize=(10,10))
 
 for el,ax in zip(entries[32:32+16],axs.ravel()):
-    df = pd.read_csv('../../processed_directories/find_circles/'+el)
-    ax.plot(df['phase_l'],df['flux_l'])
-    ax.plot(df['phase_l'],df['flux_l']-df['model_l'])
-    ax.plot(df['phase_l'],df['model_l'])
+    df = pd.read_csv('../../processed_directories/go_circles/find_circles_rel/'+el)
+    ax.plot(df['phase_g'],df['flux_g'])
+    ax.set_xlim(-0.2,0.2)
+    #ax.plot(df['phase_l'],df['flux_l']-df['model_l'])
+    #ax.plot(df['phase_l'],df['model_l'])
 
 plt.show()'''
 
@@ -39,6 +41,13 @@ def gausses(x, A1, m1, s1, A2, m2, s2):
 def lorz(x,A1,x0,g, A2, x02, g2):
     y = A1 / (1000*((x-x0)**2+(g/2)**2)) + A2 / (1000*((x-x02)**2+(g2/2)**2))
     return(y)
+
+def new_plar(ph,p,minus, plus,rorb):
+    u1 = (plus + minus)/2
+    u2 = (plus - minus)/2
+    znp = np.abs(rorb*np.sin(ph*np.pi))
+    a= occultquad(znp,p,[u1,u2])  
+    return(a -1) 
 
 #getting a fit: both gaussian and lorentzian seem like a good idea so go for both?
 '''phase, tr2d, tr3d = np.loadtxt('2d3d_0.1R_circ.csv', delimiter=' ', unpack=True)
@@ -68,8 +77,12 @@ print('ptd: ', popt1[1]-popt1[4], popt2[1]-popt2[4])
 plt.show()'''
 
 #now we take each local view lightcurve residual and try to fit lorentzian
-'''for el in entries:
-    df = pd.read_csv('../../processed_directories/go_circles/find_circles/'+el)
+'''for el in entries[:40]:
+    #df = pd.read_csv('../../processed_directories/go_circles/fit_circles_rel/'+el)
+    store = pd.HDFStore('../../processed_directories/go_circles/fit_circles_rel/'+el)
+    df = store['data']
+    metadata = store.get_storer('data').attrs.metadata
+    store.close()
 
     try: 
         loc=np.where(np.asarray(rv_kepid)==el[:9])[0]
@@ -83,13 +96,14 @@ plt.show()'''
         print("not in catalog")
         continue
    
-    k = np.ones(10)/10
-    flux = np.convolve(np.array([ x for x in df['flux_l'] if(not(np.isnan(x)))]),k,mode='same')
-    model = np.convolve(np.array([ x for x in df['model_l'] if(not(np.isnan(x)))]),k,mode='same')
+    k = np.ones(50)/50
+    #flux = np.convolve(np.array([ x for x in df['flux_l'] if(not(np.isnan(x)))]),k,mode='same')
+    #model = np.convolve(np.array([ x for x in df['model_l'] if(not(np.isnan(x)))]),k,mode='same')
+    flux = np.array(df['flux'])
+    model = np.array(df['model'])
 
-    res = flux - model
-    phase = np.array(df['phase_l'])[:len(res)]
-    print(len(res))
+    res = np.convolve(flux - model, k ,mode='same')
+    phase = np.array(df['phase'])[:len(res)]
     try: popt1, pcov1 = curve_fit(gausses, phase, res, bounds=([0,phase[0],0,0,0,0], [max(res), 0, np.inf,max(res), phase[-1], np.inf]))
     except: 
         print("no gauss fit")
@@ -99,35 +113,79 @@ plt.show()'''
         print("no lorz fit")
         continue
 
-    print(popt1.shape, pcov1.shape)
     print(el[:9],'ptd: ', np.abs(popt1[1]-popt1[4]), np.abs(popt2[1]-popt2[4]))
      
-    df1 = pd.DataFrame(zip(phase,df['flux_l'][:200],df['model_l'][:200], res, gausses(phase, *popt1), lorz(phase, *popt2)),
+    df1 = pd.DataFrame(zip(phase,df['flux'],df['model'], res, gausses(phase, *popt1), lorz(phase, *popt2)),
         columns=['phase', 'flux', 'model','residue', 'gaussian', 'lorentzian'])
 
-    store = pd.HDFStore('../../processed_directories/go_circles/fit_circles_smooth/'+el[:11])
+    store = pd.HDFStore('../../processed_directories/go_circles/fit_circles_with_res/'+el[:11])
     store.put('data', df1)
     store.get_storer('data').attrs.metadata = {'label':rv_label[rv_loc_f[0]],'gauss':popt1, 
-        'lorz':popt2,'gdur':np.abs(popt1[1]-popt1[4]) ,'ldur':np.abs(popt2[1]-popt2[4]),'g_cov':pcov1.reshape(-1), 'l_cov':pcov2.reshape(-1)}
+        'lorz':popt2,'gdur':np.abs(popt1[1]-popt1[4]) ,'ldur':np.abs(popt2[1]-popt2[4]),'g_cov':np.trace(pcov1), 'l_cov':np.trace(pcov2)}
+    store.close()'''
+#problist=[]
+'''for el in entries:
+    
+    df = pd.read_csv('../../processed_directories/go_circles/find_circles_rel/'+el)
+   
+    flux = np.array([ x for x in df['flux_g'] if(not(np.isnan(x)))])
+
+    phase = np.array(df['phase_g'])[:len(flux)]
+   
+    try: popt1,pcov1=curve_fit(new_plar, phase[:int(len(phase)/2)], flux[:int(len(phase)/2)], 
+    bounds=([0.00001,-1,0,10], [1,1,1,np.inf]))
+    except: 
+        print("no fit")
+        problist.append(el[:11])
+        continue
+  
+    
+    print(el[:9],":",np.round(np.trace(pcov1),3),'ptd: ',np.round(popt1[0],5), 
+        np.round((popt1[2]+popt1[1])/2,3), np.round((popt1[2]-popt1[1])/2,3), np.round(popt1[3],3))
+     
+    if(popt1[1]>0.9999):
+        problist.append(el[:11])
+        print('overboard')
+        continue
+    if(popt1[3]<10.001):
+        problist.append(el[:11])
+        print('under rad')
+        continue
+    if(np.trace(pcov1)>100):
+        print("fit variance")
+        problist.append(el[:11])
+        continue
+    df1 = pd.DataFrame(zip(phase,flux, new_plar(np.array(phase), *popt1)),
+        columns=['phase', 'flux', 'model'])
+
+    store = pd.HDFStore('../../processed_directories/go_circles/fit_circles_rel/'+el[:11])
+    store.put('data', df1)
+    store.get_storer('data').attrs.metadata = {'attr':popt1, 
+        'var':np.trace(pcov1)}
     store.close()'''
 
+#np.savetxt('../../processed_directories/go_circles/list_of_nonfits',problist,delimiter=' ',fmt="%s")
 #made the directory of fits... just a quick check to see the fits...
-entries = os.listdir('../../processed_directories/go_circles/fit_circles/')
-
-'''fig, axs = plt.subplots(3,3,figsize=(10,10))
+entries = os.listdir('../../processed_directories/go_circles/fit_circles_with_res/')
+np.random.shuffle(entries)
+fig, axs = plt.subplots(4,4,figsize=(10,10))
 
 
 for el,ax in zip(entries[:16],axs.ravel()):
-    store = pd.HDFStore('../../processed_directories/analyse_circles/'+el)
+    store = pd.HDFStore('../../processed_directories/go_circles/fit_circles_with_res/'+el)
     df = store['data']
-    #ax.plot(df['phase'],df['flux'])
-    #ax.plot(df['phase'],df['model'])
+    metadata = store.get_storer('data').attrs.metadata
+    #ax.plot(df['phase'],df['flux'], label='')
+    #ax.plot(df['phase'],df['model'], label=np.round(metadata['var'],2))
+    #ax.legend()
+    #print(metadata['gauss'], metadata['lorz'])
     ax.plot(df['phase'],df['residue'])
     ax.plot(df['phase'],df['gaussian'])
     ax.plot(df['phase'],df['lorentzian'])
+    #ax.set_xlim(-0.2,0.2)
     store.close()
 
-plt.show()'''
+plt.show()
 
 '''for el in entries:
     store = pd.HDFStore('../../processed_directories/go_circles/fit_circles/'+el)
@@ -158,7 +216,7 @@ plt.show()'''
 entries = os.listdir('../../processed_directories/go_circles/analyse_circles_smooth/')
 plt.style.use('seaborn-bright')    
 
-for el in entries[300:]:
+'''for el in entries[300:]:
     fig, ax = plt.subplots(2,1,figsize=(6,6))
     store = pd.HDFStore('../../processed_directories/go_circles/analyse_circles_smooth/'+el)
     df = store['data']
@@ -180,6 +238,6 @@ for el in entries[300:]:
     ax[0].set_title(el[:9]+'\nPl:'+el[10:])
     plt.savefig('../../processed_directories/go_circles/plots_smooth/'+el+'.png')
     plt.close()
-    store.close()
+    store.close()'''
 
 

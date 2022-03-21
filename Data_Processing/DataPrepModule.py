@@ -80,7 +80,7 @@ def rebin(x,y,tr_dur,tr_pd):
         if (el-i==0 or el+i==LOCAL_VIEW): continue
         df_lc_f.loc[el]=[(df_lc_f.loc[el-i]['phase']+df_lc_f.loc[el+i]['phase'])/2,(df_lc_f.loc[el-i]['flux']+df_lc_f.loc[el+i]['flux'])/2]
     df_lc_f=df_lc_f.sort_index(axis=0)
-    df_lc_f['phase']=df_lc_f['phase']/tr_dur
+    df_lc_f['phase']=df_lc_f['phase']/tr_pd
 
     return (df_lc_f,df_gl)
 
@@ -842,7 +842,7 @@ def extract_with_model(func,pathin,pathout,size):
             if(hdu[i].header['TDUR']==None or hdu[i].header['TPERIOD']==None): continue
             phase=hdu[i].data['PHASE']
             period=hdu[i].header['TPERIOD']
-            flux=hdu[i].data['LC_WHITE'] 
+            flux=hdu[i].data['LC_DETREND'] 
             model=hdu[i].data['MODEL_WHITE'] 
             if(np.all(np.isnan(model))): 
                 print('no model')
@@ -861,7 +861,7 @@ def extract_with_model(func,pathin,pathout,size):
 
 #here just call out the extract function with whatever values are needed...
 #extract(remove_rebin,FILEPATH_DATA,'nonpl_red',13)
-extract_with_model(rebin,FILEPATH_FPS,'../../processed_directories/find_circles/',10000)
+extract_with_model(rebin,FILEPATH_FPS,'../../processed_directories/go_circles/find_circles_rel/',30)
 #get_threesome_raw(FILEPATH_FPS,"data_prelim_stitch/") 
 #get_shorter_ones(6000,FILEPATH_DATA,'data_red_shortdur_6000/')
 #rebin_the_raw(3000,1000,FILEPATH_FPS,'raw_rebin2000/')
