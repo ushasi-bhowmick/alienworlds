@@ -54,8 +54,7 @@ ATTRIBUTES:
 #lets make classes in python... make it into C++ style but python flavor module that can be used anytime anywhere
 #1st class to make a transiting object
 
-#need to add limb darkening.... urgent!!!
-#further avenues for exploration: tilted orbits.
+#further avenues for exploration: tilted orbits, tidal distortions, gravity darkening
 #variable stars... eclipsing binaries... exomoons...rings etc. (after graduating probably)
 
 class Path:
@@ -75,6 +74,8 @@ class Path:
             self.traj[i].append({'x':megs[i].Plcoords[:,0], 'y': megs[i].Plcoords[:,1], 'z':megs[i].Plcoords[:,2]})
             self.centres[i].append(megs[i].centre)
 
+#add some nesting to incorporate various features
+#need to add: circles, polygons, holed geometries, stars.
 
 class Megastructure:
 
@@ -82,6 +83,28 @@ class Megastructure:
 
     def __init__(self, Rorb=1.0, iscircle = False, Rcircle = 1.0, isrot = False, ph_offset = 0.0, 
         o_vel = 1.0, elevation = 0.0, Plcoords=[], ecc=0.0, per_off=0.0):
+
+        """Megastructure Module
+
+        Create a megastructure to transit around a star. 
+        :param Rorb: Radius of the orbit. For eccentric orbits put semi-major axis
+        :param iscircle: If transiting object is circular/ spherical (simpler logic thats why)
+        :param Rcircle: Radius of circle in case its circular
+        :param isrot: Is the object rotating? 
+        :param ph_offset: Phase offset at init time of simulation (useful for multi-transit stuff)
+        :param o_vel: relative orbital velocity(for multiple structures)
+        :param elevation: height above the centre line
+        :param Plcoords: coordinates for complex geometries [(x,y,z),(x,y,z)...]
+        :param ecc: eccentricity if kepler orbit (0 for circular)
+        :param per_off: periapsis offset. Default closest approach is behind the star
+
+        Others.
+        :param rot_vel: rotation velocity for rotating objects (1 means same as orbital velocity)
+        :param rot_axis: axis of rotation of rotating objects
+        :param centre: centre of the shape, a must-do for circular stuff
+        :param circ_res: resolution with which we draw the circle
+        """
+
         Megastructure.set+=1
         self.iscircle = iscircle
         self.isrot = isrot
@@ -107,6 +130,12 @@ class Megastructure:
         else: self.Plcoords = Plcoords #[(x,y,z),(x,y,z)...]
 
     def regular_polygons_2d(self, rad, no_of_sides):
+        """Generate regular polygons like triangles, hexagons...
+
+        :param rad: radius of enclosing circle of polygon
+        :param no_of_sides: how many sided polygon is needed?
+        
+        """
         ang = 2*np.pi/no_of_sides
         coord = []
         for i in range(no_of_sides):
@@ -133,6 +162,12 @@ class Megastructure:
         self.isrot = isrot
 
     def rotate(self, axis, L):
+        """Rotate the Plcoords about an axis of rotation by some angle
+
+        :param axis: axis of rotation [x,y,z]
+        :param L: the angle with which it should be rotated
+        
+        """
         n1 = axis[0]
         n2 = axis[1]
         n3 = axis[2]
@@ -145,6 +180,8 @@ class Megastructure:
         return(temp)
 
     def translate(self, frm):
+        """ translate Plcoords by some distance determined by the angle
+        """
         kep_corr = self.Rorbit*(1-self.ecc**2)/(1+self.ecc*np.cos(self.o_vel*frm+self.ph_offset-self.periapsis_offset))
         xt = kep_corr*np.sin(self.o_vel*frm+self.ph_offset)
         zt = kep_corr*np.cos(self.o_vel*frm+self.ph_offset)
@@ -163,6 +200,23 @@ class Megastructure:
 #2nd class to simulate a bunch of transits... taking in data from the first class.
 class Simulator:
     def __init__(self, Rstar, no_pt, frame_no, frame_length = np.pi, limb_u1=0.0, limb_u2=0.0):
+
+        """Simulator Module
+
+        A Simulator object means a star system with multiple megastructures used to simulate a transit
+        :param Rstar: radius of star
+        :param no_pt: number of points to put in monte-carlo sim
+        :param frame_no: how many points should the trajectory contain
+        :param frame_length: length of trajectory in terms of phase, default (-pi,pi)
+        :param limb_u1: limb darkening coefficient 1
+        :param limb_u2: limb darkening coefficient 2
+
+        Others
+        :param megs: list of all the megastructures imported
+        :param lc: the final lightcurve from one simulation run
+        :param road: history of the object
+        
+        """
         self.megs = []
 
         self.lc = []
@@ -194,15 +248,27 @@ class Simulator:
         return(y)
 
     def add_megs(self,meg):
+
+        """Add a megastructure object to the simulator
+        """
+
         self.megs.append(meg)
 
     def set_frame_length(self):
+
+        """Let us decide an optimum frame length for the code!
+        """
+
         Rorb=[meg.Rorbit for meg in self.megs]
         n = np.floor(np.pi*max(Rorb)/(2*self.Rstar))
         self.frame_length = np.pi/n
         print("Frame Length:"+str(n))
 
     def initialize(self):
+
+        """Empty the history and lightcurve variables and redo the random numbers
+        """
+
         #self.ran_rad=self.Rstar*np.power(np.random.rand(self.no_pt),(1/2))
         self.ran_th=2*np.pi*np.random.rand(self.no_pt)
         self.lc=[]
@@ -252,7 +318,10 @@ class Simulator:
         return(frac)
 
     def simulate_transit(self):
-        #print("Limb Darkening Coefficient:",self.limb_coeff)
+        
+        """Run one iteration of the simulation
+        """
+
         self.tmegs = copy.deepcopy(self.megs)
         self.lc = []
         self.road = Path(len(self.megs), self.Rstar)
@@ -286,10 +355,12 @@ class Transit_Animate:
         self.megs = megs
         self.phase = phase
         plt.style.use('dark_background')
+        plt.rcParams["font.family"] = "serif"
         self.fig = plt.figure(figsize=(7,7))
-        self.ax1 = plt.subplot2grid((2, 2), (0, 0))
-        self.ax2 = plt.subplot2grid((2, 2), (1, 0), colspan=2)
-        self.ax3 = plt.subplot2grid((2, 2), (0, 1))
+        self.fig.patch.set_facecolor('#101010')
+        self.ax1 = plt.subplot2grid((3, 3), (0, 0), rowspan=2, colspan=2)
+        self.ax2 = plt.subplot2grid((3, 3), (2, 0), colspan=3)
+        self.ax3 = plt.subplot2grid((3, 3), (0, 2), rowspan=2)
         self.maxorb = 0
 
         self.th = np.linspace(0,2*np.pi, 200)
@@ -309,6 +380,16 @@ class Transit_Animate:
         self.ax2.set_ylim(min(self.lc)*0.99,1.01)
         plt.suptitle('Transit Simulations')
 
+        self.ax1.spines['top'].set_visible(False)
+        self.ax1.spines['right'].set_visible(False)
+        self.ax1.spines['bottom'].set_visible(False)
+        self.ax1.spines['left'].set_visible(False)
+
+        self.ax3.spines['top'].set_visible(False)
+        self.ax3.spines['right'].set_visible(False)
+        self.ax3.spines['bottom'].set_visible(False)
+        self.ax3.spines['left'].set_visible(False)
+
         t_rpls = [max(np.abs(el.Plcoords.reshape(-1)))/self.gopath.Rstar if(not el.iscircle) 
             else el.Rcircle/self.gopath.Rstar for el in self.megs]
         temp = np.array([[x['x'] for x in el] for el in self.gopath.traj])
@@ -317,7 +398,7 @@ class Transit_Animate:
         t_offs = [round(el.ph_offset/np.pi,3) for el in self.megs]
         t_vels = [el.o_vel for el in self.megs]
 
-        props = dict(boxstyle='round', facecolor='wheat', alpha=0.5, pad=1)
+        props = dict(boxstyle='round', facecolor='black', alpha=0.5, pad=1)
         txt = "$R_{pl}:$"+str(np.round(t_rpls,3)[:1])+"$R_{star}$\nOrbit:"+str(np.round(t_orbs,
             3)[:1])+"$R_{star}$\nOffset:"+str(t_offs[:1])+"$\pi$\nVelocity:"+str(t_vels[:1])
 
@@ -335,7 +416,7 @@ class Transit_Animate:
 
         self.ax1.set_xlim(-self.maxorb*1.2,self.maxorb*1.2)
         self.ax1.set_ylim(-self.maxorb*1.2,self.maxorb*1.2)
-
+        self.ax1.tick_params(left = False, right = False , labelleft = False ,labelbottom = False, bottom = False)
         i=0
         for el in self.gopath.traj:
             self.ax1.fill(el[frame]['x'],el[frame]['y'], zorder=zpl[i], color='black', edgecolor='gray')
@@ -347,29 +428,29 @@ class Transit_Animate:
         ani = animation.FuncAnimation(self.fig, self.update, frames=np.arange(0,len(self.phase)), interval=1,init_func=self.init_frame)
         if(ifsave):
             writergif = animation.PillowWriter(fps=20) 
-            ani.save(filepath, writer=writergif)
+            ani.save(filepath, writer=writergif, savefig_kwargs=dict(facecolor='#101010'))
         else: plt.show()
 
 
-#4rth class for a plotting and saving data library
-'''
-sim1 = Simulator(100, 1000, 100, np.pi/2)
+# 4rth class for a plotting and saving data library
+
+# sim1 = Simulator(100, 1000, 100, np.pi/2)
 
 
-meg_2d = Megastructure(200, False, isrot=True, elevation=200*np.sin(np.pi/8))
-#meg_3d = Megastructure(200, True, 5, isrot=False)
-meg_2d.Plcoords = meg_2d.regular_polygons_2d(40, 4)
-meg_2d.Plcoords=meg_2d.rotate([0,0,1],np.pi/4)
-meg_2d.Plcoords=meg_2d.rotate([1,0,0],-np.pi/8)
-#meg_3d.rot_vel = 2
-sim1.add_megs(meg_2d)
-#sim1.add_megs(meg_2d)
+# meg_2d = Megastructure(200, False, isrot=True, elevation=200*np.sin(np.pi/8))
+# meg_3d = Megastructure(200, True, 5, isrot=False)
+# meg_2d.Plcoords = meg_2d.regular_polygons_2d(40, 4)
+# meg_2d.Plcoords=meg_2d.rotate([0,0,1],np.pi/4)
+# meg_2d.Plcoords=meg_2d.rotate([1,0,0],-np.pi/8)
+# meg_3d.rot_vel = 2
+# sim1.add_megs(meg_2d)
+# #sim1.add_megs(meg_2d)
 
-sim1.simulate_transit()
+# sim1.simulate_transit()
 
-#
-TA = Transit_Animate(sim1.road, sim1.megs, sim1.lc, sim1.frames)
-TA.go()
-#plt.plot(sim1.lc)
-#plt.plot(sim2.lc)
-#plt.show()'''
+# 
+# TA = Transit_Animate(sim1.road, sim1.megs, sim1.lc, sim1.frames)
+# TA.go()
+# plt.plot(sim1.lc)
+# plt.plot(sim2.lc)
+# plt.show()
