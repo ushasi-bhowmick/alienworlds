@@ -8,24 +8,26 @@ from multiprocessing import Process, Pool
 
 #yo! kumaran recieving? over and out.
 # 
-
+testg = 0
 start_time = time.time()
 
 def test_multi_loops_3d(x):
+    global testg
     np.random.seed(1234*x)
-    sim_3d = dysim.Simulator (100, 30000, 500, np.pi/5, limb_u1=0.6, limb_u2=0.0)
-    meg_3d = dysim.Megastructure(500, True, 10, ecc=0.0)
+    sim_3d = dysim.Simulator (100, 60000, 500, np.pi/5, limb_u1=0.0, limb_u2=0.0)
+    meg_3d = dysim.Megastructure(500, True, 1, ecc=0.0)
     sim_3d.add_megs(meg_3d)
     sim_3d.simulate_transit()
-    if(x==0): print("Count:", meg_3d.set)
+    print("Count:", meg_3d.set, x)
     return(sim_3d.lc)
 
 def test_multi_loops_2d(x):
+    global testg
     np.random.seed(3456*x)
-    sim_2d = dysim.Simulator (100, 30000, 500, np.pi/5, limb_u1=0.6, limb_u2=0.0)
-    meg_2d = dysim.Megastructure(500, True, 10, isrot=True, ecc=0.0)
+    sim_2d = dysim.Simulator (100, 60000, 500, np.pi/5, limb_u1=0.0, limb_u2=0.0)
+    meg_2d = dysim.Megastructure(500, True, 1, isrot=True, ecc=0.0)
     sim_2d.add_megs(meg_2d)
-    if(x==0): print("Count:", meg_2d.set)
+    print("Count:", meg_2d.set, x)
     sim_2d.simulate_transit()
     return(sim_2d.lc)
 
@@ -34,14 +36,16 @@ def test_multi_loops_2d(x):
 if __name__ == '__main__':
     # start 4 worker processes
     with Pool(processes=30) as pool:
-        lc2dsum = np.asarray(pool.map(test_multi_loops_2d, range(60)))
+        lc2dsum = np.asarray(pool.map(test_multi_loops_2d, range(90)))
         lc2d = np.mean(lc2dsum, axis = 0)
+        lc2dstd = np.sqrt(np.mean((lc2dsum-lc2d)**2, axis=0))
         print("--- %s min ---" % ((time.time() - start_time)/60))
 
-        lc3dsum = np.asarray(pool.map(test_multi_loops_3d, range(60)))
+        lc3dsum = np.asarray(pool.map(test_multi_loops_3d, range(90)))
         print("--- %s min ---" % ((time.time() - start_time)/60))
 
         lc3d = np.mean(lc3dsum, axis = 0)
+        lc3dstd = np.sqrt(np.mean((lc3dsum-lc3d)**2, axis=0))
 
         mn = (np.asarray(lc3d-lc2d)**2).sum()/len(lc3d)
         print(np.sqrt(mn))
@@ -58,12 +62,12 @@ if __name__ == '__main__':
     ax[1].set_xlabel('Phase')
     ax[1].set_ylabel('Flux')
     ax[0].set_ylabel('Flux')
-    ax[0].set_title("$R_{pl}$ = 0.1 $R_{st}$, Orbit: = 5 $R_{st}$, u1: 0.8, u2:0.0, e: 0.0")
+    ax[0].set_title("$R_{pl}$ = 0.01 $R_{st}$, Orbit: = 5 $R_{st}$, u1: 0.0, u2:0.0, e: 0.0")
     ax[1].set_title('Residual')
     ax[1].legend()
     plt.suptitle('2D vs 3D transiting objects')
-    np.savetxt('2d3d_0.1R_limb_circ.csv', np.transpose(np.array([frm, lc2d, lc3d])),delimiter=' ', header='frame, 2d, 3d')
-    plt.savefig('2d3d_res_0.1R_limb_circ.png')
+    np.savetxt('2d3d_0.01R_circ.csv', np.transpose(np.array([frm, lc2d, lc2dstd, lc3d, lc3dstd])),delimiter=',', header='frame, 2d, 2dstd, 3d, 3dstd')
+    plt.savefig('2d3d_res_0.01R_circ.png')
     #plt.show()
 
 '''start_time = time.time()
