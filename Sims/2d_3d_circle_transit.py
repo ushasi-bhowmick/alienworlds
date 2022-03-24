@@ -14,8 +14,8 @@ start_time = time.time()
 def test_multi_loops_3d(x):
     global testg
     np.random.seed(1234*x)
-    sim_3d = dysim.Simulator (100, 40000, 400, np.pi/5, limb_u1=0.35, limb_u2=0.3)
-    meg_3d = dysim.Megastructure(200, True, 1, ecc=0.0)
+    sim_3d = dysim.Simulator (100, 30000, 500, np.pi/5, limb_u1=0.6, limb_u2=0.0)
+    meg_3d = dysim.Megastructure(500, True, 20, ecc=0.6, per_off=np.pi/2)
     sim_3d.add_megs(meg_3d)
     sim_3d.simulate_transit()
     print("Count:", meg_3d.set, x)
@@ -24,8 +24,8 @@ def test_multi_loops_3d(x):
 def test_multi_loops_2d(x):
     global testg
     np.random.seed(3456*x)
-    sim_2d = dysim.Simulator (100, 40000, 400, np.pi/5, limb_u1=0.35, limb_u2=0.3)
-    meg_2d = dysim.Megastructure(200, True, 1, isrot=True, ecc=0.0)
+    sim_2d = dysim.Simulator (100, 30000, 500, np.pi/5, limb_u1=0.6, limb_u2=0.0)
+    meg_2d = dysim.Megastructure(500, True, 20, isrot=True, ecc=0.6, per_off=np.pi/2)
     sim_2d.add_megs(meg_2d)
     print("Count:", meg_2d.set, x)
     sim_2d.simulate_transit()
@@ -62,12 +62,12 @@ if __name__ == '__main__':
     ax[1].set_xlabel('Phase')
     ax[1].set_ylabel('Flux')
     ax[0].set_ylabel('Flux')
-    ax[0].set_title("$R_{pl}$ = 0.01 $R_{st}$, Orbit: = 2 $R_{st}$, u1: 0.35, u2:0.3, e: 0.0")
+    ax[0].set_title("$R_{pl}$ = 0.2 $R_{st}$, Orbit: = 5 $R_{st}$, u1: 0.6, u2:0.0, e: 0.6")
     ax[1].set_title('Residual')
     ax[1].legend()
     plt.suptitle('2D vs 3D transiting objects')
-    np.savetxt('2d3d_0.01R_limbQ_circ.csv', np.transpose(np.array([frm, lc2d, lc2dstd, lc3d, lc3dstd])),delimiter=',', header='frame, 2d, 2dstd, 3d, 3dstd')
-    plt.savefig('2d3d_res_0.01R_limbQ_circ.png')
+    np.savetxt('2d3d_0.2R_limb_kep.csv', np.transpose(np.array([frm, lc2d, lc2dstd, lc3d, lc3dstd])),delimiter=',', header='frame, 2d, 2dstd, 3d, 3dstd')
+    plt.savefig('2d3d_res_0.2R_limb_kep.png')
     #plt.show()
 
 '''start_time = time.time()
