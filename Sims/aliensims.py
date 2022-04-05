@@ -399,8 +399,8 @@ class Transit_Animate:
         t_vels = [el.o_vel for el in self.megs]
 
         props = dict(boxstyle='round', facecolor='black', alpha=0.5, pad=1)
-        txt = "$R_{pl}:$"+str(np.round(t_rpls,3)[:1])+"$R_{star}$\nOrbit:"+str(np.round(t_orbs,
-            3)[:1])+"$R_{star}$\nOffset:"+str(t_offs[:1])+"$\pi$\nVelocity:"+str(t_vels[:1])
+        txt = "$R_{pl}:$\n"+str(np.round(t_rpls,3)[:3])+"$R_{star}$\nOrbit:\n"+str(np.round(t_orbs,
+            3)[:3])+"$R_{star}$\nOffset:\n"+str(t_offs[:3])+"$\pi$\nVelocity:\n"+str(t_vels[:3])
 
         self.ax3.text(0.5, 0.5, txt, fontsize=9,transform=self.ax3.transAxes,  horizontalalignment='center',
             verticalalignment='center', linespacing=2, bbox=props, color='white')
