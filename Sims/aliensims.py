@@ -458,7 +458,7 @@ class Transit_Animate:
 # sim1 = Simulator(100, 1000, 100, np.pi)
 # # sim2 = Simulator(100, 1000, 100, np.pi)
 
-# meg_2d = Megastructure(200, True, 20, isrot=True, incl=np.pi/8, ph_offset=0, elevation=0, ecc=0, per_off=np.pi/2)
+# meg_2d = Megastructure(300, True, 10, isrot=True, incl=19.5*np.pi/180, ph_offset=0, elevation=0, ecc=0, per_off=np.pi/2)
 # # meg_2d2 = Megastructure(120, True, 20, isrot=True, incl=0, ph_offset=0, elevation=0)
 
 # sim1.add_megs(meg_2d)
