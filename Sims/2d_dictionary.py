@@ -58,13 +58,13 @@ def test_multi_loops_2d(x):
     sim_2d.add_megs(meg_2d)
     sim_2d.set_frame_length()
     frame_l.append(sim_2d.frame_length)
-    if(x==0): print("Count:", meg_2d.set, ' u1:',u1,' u2:',u2, ' b:',b*180/np.pi, 'rorb:',Rorb)
-    sim_2d.simulate_transit()
+    if(x==0): print("Count:", meg_2d.set, ' u1:',u1,' u2:',u2, ' b:',np.around(b*180/np.pi,2), 'rorb:',Rorb)
+    sim_2d.simulate_transit()  
     return(sim_2d.lc)
 
 
 
-for r in rorb_arr[3:]:
+for r in rorb_arr[5:]:
     Rorb=r*100
     global frm
     for u1ss in [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]:
