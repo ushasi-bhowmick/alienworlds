@@ -3,31 +3,48 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import aliensims as dysim
+import os
 import time
+from transit import occultnonlin, occultquad
 from multiprocessing import Process, Pool
 
 #yo! kumaran recieving? over and out.
 # 
 testg = 0
 start_time = time.time()
+fl = np.pi
+
+
+print(np.logspace(0.3,3,10))
+print(np.linspace(0.01,0.5,10))
+
+
+def new_plar(ph,p,u1,u2,rorb,imp):
+    znp = np.sqrt(np.abs(rorb*np.sin(ph*np.pi))**2+imp**2)
+    a= occultquad(znp,p,[u1,u2])  
+    return(a -1) 
 
 def test_multi_loops_3d(x):
     global testg
+    global fl
     np.random.seed(1234*x)
-    sim_3d = dysim.Simulator (100, 50000, 500, np.pi/3, limb_u1=0.0, limb_u2=0.0)
-    meg_3d = dysim.Megastructure(200, True, 20, ecc=0.0)
+    sim_3d = dysim.Simulator (100, 20, 300, np.pi/3, limb_u1=0.0, limb_u2=0.0)
+    meg_3d = dysim.Megastructure(2000, True, 5, ecc=0.0)
     sim_3d.add_megs(meg_3d)
+    sim_3d.set_frame_length()
     sim_3d.simulate_transit()
-    print("Count:", meg_3d.set, x)
+    fl=sim_3d.frame_length
+    if(x==0): print("Count:", meg_3d.set, x, np.pi/sim_3d.frame_length)
     return(sim_3d.lc)
 
 def test_multi_loops_2d(x):
     global testg
     np.random.seed(3456*x)
-    sim_2d = dysim.Simulator (100, 50000, 500, np.pi/3, limb_u1=0.0, limb_u2=0.0)
-    meg_2d = dysim.Megastructure(200, True, 20, isrot=True, ecc=0.0)
+    sim_2d = dysim.Simulator (100, 20, 300, np.pi/3, limb_u1=0.0, limb_u2=0.0)
+    meg_2d = dysim.Megastructure(2000, True, 5, isrot=True, ecc=0.0)
     sim_2d.add_megs(meg_2d)
-    print("Count:", meg_2d.set, x)
+    sim_2d.set_frame_length()
+    if(x==0): print("Count:", meg_2d.set, x, np.pi/sim_2d.frame_length)
     sim_2d.simulate_transit()
     return(sim_2d.lc)
 
@@ -35,8 +52,8 @@ def test_multi_loops_2d(x):
 
 if __name__ == '__main__':
     # start 4 worker processes
-    with Pool(processes=30) as pool:
-        lc2dsum = np.asarray(pool.map(test_multi_loops_2d, range(90)))
+    with Pool(processes=40) as pool:
+        lc2dsum = np.asarray(pool.map(test_multi_loops_2d, range(80)))
         lc2d = np.mean(lc2dsum, axis = 0)
         lc2dstd = np.sqrt(np.mean((lc2dsum-lc2d)**2, axis=0))
         print("--- %s min ---" % ((time.time() - start_time)/60))
@@ -53,9 +70,13 @@ if __name__ == '__main__':
         plt.style.use('seaborn-bright')
         fig, ax = plt.subplots(2,1, figsize = (7,10), sharex=True)
 
-    frm = np.linspace(-np.pi/3, np.pi/3, len(lc3d))
+    frm = np.linspace(-fl,fl, len(lc3d))
+    print(fl)
+    model = new_plar(frm/np.pi,0.05, 0,0,20,0)+1
     ax[0].plot(frm,lc2d,label = '2d')
     ax[0].plot(frm, lc3d, label = '3d')
+    ax[0].plot(frm, model, label='model' )
+    print('noise:', np.std(model-lc3d), 'snr', (1-np.min(lc3d))/np.std(model-lc3d))
     ax[0].legend()
     ax[1].plot(frm, np.asarray(lc3d-lc2d), label="mean:"+str(round(np.sqrt(mn),6)))
     ax[1].fill_between(frm, np.sqrt(mn)*np.ones(len(lc3d)), -np.sqrt(mn)*np.ones(len(lc3d)), alpha=0.2)
@@ -66,8 +87,8 @@ if __name__ == '__main__':
     ax[1].set_title('Residual')
     ax[1].legend()
     plt.suptitle('2D vs 3D transiting objects')
-    np.savetxt('2d3d_0.2R_circ_2.csv', np.transpose(np.array([frm, lc2d, lc2dstd, lc3d, lc3dstd])),delimiter=',', header='frame, 2d, 2dstd, 3d, 3dstd')
-    plt.savefig('2d3d_res_0.2R_circ_2.png')
+    #np.savetxt('2d3d_0.2R_circ_2.csv', np.transpose(np.array([frm, lc2d, lc2dstd, lc3d, lc3dstd])),delimiter=',', header='frame, 2d, 2dstd, 3d, 3dstd')
+    plt.savefig('temp.png')
     #plt.show()
 
 '''start_time = time.time()

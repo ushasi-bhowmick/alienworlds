@@ -229,6 +229,7 @@ class Simulator:
         self.Rstar = Rstar
         self.no_pt = no_pt
         self.frame_length = frame_length
+        self.frame_no = frame_no
         self.frames = self.frame_length*np.linspace(-1, 1, frame_no)
         self.tmegs = []
 
@@ -267,7 +268,8 @@ class Simulator:
         Rorb=[meg.Rorbit for meg in self.megs]
         n = np.floor(np.pi*max(Rorb)/(2*self.Rstar))
         self.frame_length = np.pi/n
-        print("Frame Length:"+str(n))
+        self.frames = self.frame_length*np.linspace(-1, 1, self.frame_no)
+        #print("Frame Length:"+str(n))
 
     def initialize(self):
 
