@@ -15,7 +15,7 @@ start_time = time.time()
 fl = np.pi
 
 
-print(np.logspace(0.3,3,10))
+print(np.logspace(0.31,3,10))
 print(np.linspace(0.01,0.5,10))
 
 
