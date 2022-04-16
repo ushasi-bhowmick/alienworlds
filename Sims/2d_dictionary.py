@@ -26,7 +26,7 @@ frame_res=600
 mcmc_pts=300
 
 man = Manager()
-
+ 
 frame_l=man.list()
 
 #variable parameters
@@ -40,7 +40,7 @@ u2=0.1
 Rstar=100
 b=0
 ecc=0
-per_off=0
+per_off=0 
 
 if not os.path.exists('../Computation_Directory/Rpl_'+str(Rpl)):
     os.mkdir('../Computation_Directory/Rpl_'+str(Rpl))
@@ -61,11 +61,9 @@ def test_multi_loops_2d(x):
     frame_l.append(sim_2d.frame_length)
     if(x==0): print("Count:", meg_2d.set, ' u1:',u1,' u2:',u2, ' b:',np.around(b*180/np.pi,2), 'rorb:',Rorb)
     sim_2d.simulate_transit()  
-    return(sim_2d.lc)
+    return(sim_2d.lc) 
 
-
-
-for r in rorb_arr:
+for r in rorb_arr[7:]:
     Rorb=r*100
     global frm
     for u1ss in [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]:
@@ -100,7 +98,7 @@ for r in rorb_arr:
                 df.to_csv('../Computation_Directory/Rpl_'+str(Rpl)+'/2d_rorb_'+str(r)+'.csv',index=False, sep=',')
 
                 
-
+  
         ax.legend()
         ax.set_xlabel('Phase')
         ax.set_ylabel('Flux')
