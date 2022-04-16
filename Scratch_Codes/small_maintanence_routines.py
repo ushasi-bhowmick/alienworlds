@@ -55,7 +55,7 @@ def move_doubtful_files_elsewhere():
             os.system("move "+FILEPATH_RAW_DATA+stuff+" "+FILEPATH_RAW_OTH)
     
 def get_proper_labels_from_koi_table():
-    ref=ascii.read("ex_koi_id.tab")
+    ref=ascii.read("../../Catalogs/ex_TCE_extra.tab")
     koi_kepid=[('00000'+str(el))[-9:] for el in ref['kepid']]
     koi_label=ref['koi_disposition']
     tce_num=[]
@@ -64,12 +64,25 @@ def get_proper_labels_from_koi_table():
         if(koi_kepid[i]==koi_kepid[i-1]):
             tce_num.append(tce_num[-1]+1)
         else: tce_num.append(1)
+    label=[]
+    for el in koi_label:
+        if(el=='CONFIRMED'): label.append('PL')
+        if(el=='FALSE POSITIVE'): label.append('FPS')
+        if(el=='CANDIDATE'): label.append('CAN')
     data=Table()
     print(len(koi_kepid),len(tce_num),len(koi_label))
     data['kepid']=koi_kepid
+    data['rpl_rstar']=ref['koi_ror']
+    data['rorb_rstar']=ref['koi_dor']
+    data['u1']=ref['koi_ldm_coeff1']
+    data['u2']=ref['koi_ldm_coeff2']
+    data['b']=ref['koi_impact']
+    data['e']=ref['koi_eccen']
+    data['tdur']=ref['koi_duration']
+    data['tperiod']=ref['koi_period']
     data['tce_plnt_num']=tce_num
-    data['label']=koi_label
-    ascii.write(data,"robovetter_label.dat",overwrite=True)
+    data['label']=label
+    ascii.write(data,"../../Catalogs/robovetter_label.dat",overwrite=True)
 
 def check_new_binary():
     eb_entry=ascii.read('eb_label.dat')
@@ -106,5 +119,5 @@ def reorder_TS():
     np.savetxt('training_data/Ytrain_rv_raw500_2_temp.csv', np.array(temp2), delimiter=',')
 
 #reorder_TS()
-move_doubtful_files_elsewhere()
-        
+#move_doubtful_files_elsewhere()
+get_proper_labels_from_koi_table()       
