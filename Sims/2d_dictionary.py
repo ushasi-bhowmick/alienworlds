@@ -17,7 +17,7 @@ from multiprocessing import Process, Pool, Manager
 #manual iteration over:
 #Rpl
 #Rorb
-rpl_arr=np.around(np.linspace(0.01,0.5,10) ,2)
+rpl_arr=np.around(np.linspace(0.01,0.5, 10) ,2)
 print(rpl_arr)
 rorb_arr=np.around(np.logspace(0.31,3,10), 2)
 
