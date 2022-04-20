@@ -17,6 +17,8 @@ def in_or_out(self,refx,refy, meg):
 //c++ -c -fpic gfg_wrap.cxx gfg.cpp -I/usr/include/python3.8
 //c++ -shared gfg.o gfg_wrap.o -o _gfg.so
 
+//export LD_LIBRARY_PATH=/opt/anaconda3/envs/tf_gpu/lib
+
 #include<iostream>
 #include<vector>
 

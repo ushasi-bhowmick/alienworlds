@@ -311,7 +311,7 @@ class Simulator:
     def monte_carlo_multi(self, frame): 
         dists=[]
         
-        start_time=time.time()
+        #start_time=time.time()
         for meg in self.tmegs:
             if(meg.glp(frame)>np.pi/2 and meg.glp(frame)<3*np.pi/2): dists.append(np.zeros(self.no_pt))
 
@@ -320,13 +320,13 @@ class Simulator:
                     distarr = self.in_or_out_of_circle(self.ran_rad*np.sin(self.ran_th), 
                         self.ran_rad*np.cos(self.ran_th),meg)
                 else:
-                    # distarr=np.asarray(in_or_out(self.ran_rad*np.sin(self.ran_th),self.ran_rad*np.cos(self.ran_th),
-                    #     meg.Plcoords[:,0], meg.Plcoords[:,1]))
-                    distarr=np.asarray([self.in_or_out(self.ran_rad[j]*np.sin(self.ran_th[j]),
-                        self.ran_rad[j]*np.cos(self.ran_th[j]), meg) for j in range(self.no_pt)])
+                    distarr=np.asarray(in_or_out(self.ran_rad*np.sin(self.ran_th),self.ran_rad*np.cos(self.ran_th),
+                        meg.Plcoords[:,0], meg.Plcoords[:,1]))
+                    # distarr=np.asarray([self.in_or_out(self.ran_rad[j]*np.sin(self.ran_th[j]),
+                    #     self.ran_rad[j]*np.cos(self.ran_th[j]), meg) for j in range(self.no_pt)])
                 dists.append(distarr)
 
-        print("one: ",time.time()-start_time)
+        #print("one: ",time.time()-start_time)
         frac = np.sum(np.sum(np.asarray(dists), axis=0)>0)/self.no_pt
         return(frac)
 

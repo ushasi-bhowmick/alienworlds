@@ -23,8 +23,8 @@ print(rpl_arr)
 rorb_arr=np.around(np.logspace(0.31,3,10), 2)
 
 #resolution setters
-frame_res=700
-mcmc_pts=300
+frame_res=300
+mcmc_pts=500
 
 man = Manager()
  
@@ -33,7 +33,7 @@ frame_l=man.list()
 #variable parameters
 # Rpl: 1, 5, 10, 30, 50
 # Rorb: 2, 4, 16, 64, 128
-Rpl=100*rpl_arr[5]
+Rpl=100*rpl_arr[9]
 
 Rorb=200
 u1=0.1
@@ -43,8 +43,8 @@ b=0
 ecc=0
 per_off=0 
 
-if not os.path.exists('../Computation_Directory/Rpl_'+str(Rpl)):
-    os.mkdir('../Computation_Directory/Rpl_'+str(Rpl))
+if not os.path.exists('../Computation_Directory/Rpl_'+str(np.around(Rpl),2)):
+    os.mkdir('../Computation_Directory/Rpl_'+str(np.around(Rpl,2)))
     print("Directory Created ")
 
 start_time = time.time()
@@ -68,8 +68,8 @@ def test_multi_loops_2d(x):
 for r in rorb_arr:
     Rorb=r*100
     global frm
-    for u1ss in [0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]:
-        plt.style.use('seaborn-bright')
+    for u1ss in [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]:
+        plt.style.use('seaborn-bright') 
         fig, ax = plt.subplots(1,1, figsize = (10,10))
         for bss in [0,0.2,0.4,0.6,0.8]:
             b=np.arcsin(bss*Rstar/Rorb)
