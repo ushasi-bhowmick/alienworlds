@@ -1,9 +1,12 @@
+
 from xml.etree.ElementInclude import include
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from scipy.optimize import root_scalar
 import copy
+import time
+from gfg import in_or_out
 
 """TRANSIT SIMULATION MODULE
 Simulated lightcurves generated for anything and everything going around a star of your choice.
@@ -308,7 +311,7 @@ class Simulator:
     def monte_carlo_multi(self, frame): 
         dists=[]
         
-
+        start_time=time.time()
         for meg in self.tmegs:
             if(meg.glp(frame)>np.pi/2 and meg.glp(frame)<3*np.pi/2): dists.append(np.zeros(self.no_pt))
 
@@ -317,10 +320,13 @@ class Simulator:
                     distarr = self.in_or_out_of_circle(self.ran_rad*np.sin(self.ran_th), 
                         self.ran_rad*np.cos(self.ran_th),meg)
                 else:
+                    # distarr=np.asarray(in_or_out(self.ran_rad*np.sin(self.ran_th),self.ran_rad*np.cos(self.ran_th),
+                    #     meg.Plcoords[:,0], meg.Plcoords[:,1]))
                     distarr=np.asarray([self.in_or_out(self.ran_rad[j]*np.sin(self.ran_th[j]),
                         self.ran_rad[j]*np.cos(self.ran_th[j]), meg) for j in range(self.no_pt)])
                 dists.append(distarr)
 
+        print("one: ",time.time()-start_time)
         frac = np.sum(np.sum(np.asarray(dists), axis=0)>0)/self.no_pt
         return(frac)
 
@@ -457,20 +463,20 @@ class Transit_Animate:
 
 # 4rth class for a plotting and saving data library
 
-# sim1 = Simulator(100, 1000, 100, np.pi)
+sim1 = Simulator(100, 5000, 100, np.pi/3)
 # # sim2 = Simulator(100, 1000, 100, np.pi)
 
-# meg_2d = Megastructure(300, True, 10, isrot=True, incl=19.5*np.pi/180, ph_offset=0, elevation=0, ecc=0, per_off=np.pi/2)
+meg_2d = Megastructure(300, True, 10, isrot=True, incl=19.5*np.pi/180, ph_offset=0, elevation=0, ecc=0, per_off=np.pi/2)
 # # meg_2d2 = Megastructure(120, True, 20, isrot=True, incl=0, ph_offset=0, elevation=0)
 
-# sim1.add_megs(meg_2d)
-# sim1.simulate_transit()
+sim1.add_megs(meg_2d)
+sim1.simulate_transit()
 # # sim2.add_megs(meg_2d2)
 # # sim2.simulate_transit()
 
 
 # TA = Transit_Animate(sim1.road, sim1.megs, sim1.lc, sim1.frames)
 # TA.go()
-# # plt.plot(sim1.lc)
+plt.plot(sim1.lc)
 # # plt.plot(sim2.lc)
-# # plt.show()
+plt.show()
