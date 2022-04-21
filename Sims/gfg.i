@@ -7,9 +7,9 @@
 // Instantiate templates used by example
 namespace std {
    %template(IntVector) vector<int>;
-   %template(FloatVector) vector<float>;
+   %template(DoubleVector) vector<double>;
 }
 
 // Include the header file with above prototypes
 %include "gfg.h"
-std::vector<int> in_or_out(std::vector<float> refx,std::vector<float> refy, std::vector<float> newshx , std::vector<float> newshy) ;
+std::vector<int> in_or_out(std::vector<double> refx,std::vector<double> refy, std::vector<double> newshx , std::vector<double> newshy) ;

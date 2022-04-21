@@ -17,10 +17,12 @@ def in_or_out(self,refx,refy, meg):
 //c++ -c -fpic gfg_wrap.cxx gfg.cpp -I/usr/include/python3.8
 //c++ -shared gfg.o gfg_wrap.o -o _gfg.so
 
+//python-config --cflags
+
 #include<iostream>
 #include<vector>
 
-void printed(std::vector<float> yay) {
+void printed(std::vector<double> yay) {
     for(int i=0;i<yay.size();i++) std::cout<<yay[i]<<" ";
 }
 
@@ -28,16 +30,16 @@ void printed(std::vector<int> yay) {
     for(int i=0;i<yay.size();i++) std::cout<<yay[i]<<" ";
 }
 
-float max(std::vector<float> yay) {
-    float m=0;
+double max(std::vector<double> yay) {
+    double m=0;
     for(int i=0;i<yay.size();i++) {
         if (yay[i]>m) m=yay[i];
     }
     return(m);
 }
 
-float min(std::vector<float> yay) {
-    float m=0;
+double min(std::vector<double> yay) {
+    double m=0;
     for(int i=0;i<yay.size();i++) {
         if (yay[i]<m) m=yay[i];
     }
@@ -48,27 +50,31 @@ int hello() {
     return(100);
 }
 
-//void printed(vector<float> yay);
+//void printed(vector<double> yay);
 
-std::vector<int> in_or_out(std::vector<float> refx,std::vector<float> refy, std::vector<float> newshx , std::vector<float> newshy) {
+std::vector<int> in_or_out(std::vector<double> refx,std::vector<double> refy, std::vector<double> newshx , std::vector<double> newshy) {
 
     //eliminate stuff outside bounding boxes
     int n=newshx.size();
-    float minshx=min(newshx);
-    float maxshx=max(newshx);
-    float minshy=min(newshy);
-    float maxshy=max(newshy);
+    double minshx=min(newshx);
+    double maxshx=max(newshx);
+    double minshy=min(newshy);
+    double maxshy=max(newshy);
 
     std::vector<int> distarr;
 
 
     for(int j=0;j<refx.size(); j++) {
-        if(refx[j]<minshx || refx[j]>maxshx || refy[j]>maxshy || refy[j]<minshy) distarr.push_back(0);
+        if(refx[j]<minshx || refx[j]>maxshx || refy[j]>maxshy || refy[j]<minshy) {
+            distarr.push_back(0);
+            continue;
+        }
+
 
         newshx.push_back(newshx[0]);
         newshy.push_back(newshy[0]);
 
-        std::vector<float> temp;
+        std::vector<double> temp;
 
         for(int i=0; i<n; i++) {
             if(newshx[i]> refx[j]) {temp.push_back((newshy[i]-refy[j])*(newshy[i+1]-refy[j]) < 0);}
@@ -90,11 +96,11 @@ std::vector<int> in_or_out(std::vector<float> refx,std::vector<float> refy, std:
 int main() {
     std::cout<<hello()<<std::endl;
 
-    float shx[] = {-2.0,2.0,2.0,-2.0};
-    float shy[] = {-2.0,-2.0,2.0,2.0};
+    double shx[] = {-2.0,2.0,2.0,-2.0};
+    double shy[] = {-2.0,-2.0,2.0,2.0};
 
-    float refx[] = {1,2,1,3,4,0};
-    float refy[]= {2,3,1,-2,1,0};
+    double refx[] = {1,2,1,3,4,0};
+    double refy[]= {2,3,1,-2,1,0};
     std::vector<int> val=in_or_out(refx,refy, shx, shy, 4,6);
 
     printed(val);

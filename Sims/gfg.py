@@ -228,111 +228,111 @@ class IntVector(object):
 # Register IntVector in _gfg:
 _gfg.IntVector_swigregister(IntVector)
 
-class FloatVector(object):
+class DoubleVector(object):
     thisown = property(lambda x: x.this.own(), lambda x, v: x.this.own(v), doc="The membership flag")
     __repr__ = _swig_repr
 
     def iterator(self):
-        return _gfg.FloatVector_iterator(self)
+        return _gfg.DoubleVector_iterator(self)
     def __iter__(self):
         return self.iterator()
 
     def __nonzero__(self):
-        return _gfg.FloatVector___nonzero__(self)
+        return _gfg.DoubleVector___nonzero__(self)
 
     def __bool__(self):
-        return _gfg.FloatVector___bool__(self)
+        return _gfg.DoubleVector___bool__(self)
 
     def __len__(self):
-        return _gfg.FloatVector___len__(self)
+        return _gfg.DoubleVector___len__(self)
 
     def __getslice__(self, i, j):
-        return _gfg.FloatVector___getslice__(self, i, j)
+        return _gfg.DoubleVector___getslice__(self, i, j)
 
     def __setslice__(self, *args):
-        return _gfg.FloatVector___setslice__(self, *args)
+        return _gfg.DoubleVector___setslice__(self, *args)
 
     def __delslice__(self, i, j):
-        return _gfg.FloatVector___delslice__(self, i, j)
+        return _gfg.DoubleVector___delslice__(self, i, j)
 
     def __delitem__(self, *args):
-        return _gfg.FloatVector___delitem__(self, *args)
+        return _gfg.DoubleVector___delitem__(self, *args)
 
     def __getitem__(self, *args):
-        return _gfg.FloatVector___getitem__(self, *args)
+        return _gfg.DoubleVector___getitem__(self, *args)
 
     def __setitem__(self, *args):
-        return _gfg.FloatVector___setitem__(self, *args)
+        return _gfg.DoubleVector___setitem__(self, *args)
 
     def pop(self):
-        return _gfg.FloatVector_pop(self)
+        return _gfg.DoubleVector_pop(self)
 
     def append(self, x):
-        return _gfg.FloatVector_append(self, x)
+        return _gfg.DoubleVector_append(self, x)
 
     def empty(self):
-        return _gfg.FloatVector_empty(self)
+        return _gfg.DoubleVector_empty(self)
 
     def size(self):
-        return _gfg.FloatVector_size(self)
+        return _gfg.DoubleVector_size(self)
 
     def swap(self, v):
-        return _gfg.FloatVector_swap(self, v)
+        return _gfg.DoubleVector_swap(self, v)
 
     def begin(self):
-        return _gfg.FloatVector_begin(self)
+        return _gfg.DoubleVector_begin(self)
 
     def end(self):
-        return _gfg.FloatVector_end(self)
+        return _gfg.DoubleVector_end(self)
 
     def rbegin(self):
-        return _gfg.FloatVector_rbegin(self)
+        return _gfg.DoubleVector_rbegin(self)
 
     def rend(self):
-        return _gfg.FloatVector_rend(self)
+        return _gfg.DoubleVector_rend(self)
 
     def clear(self):
-        return _gfg.FloatVector_clear(self)
+        return _gfg.DoubleVector_clear(self)
 
     def get_allocator(self):
-        return _gfg.FloatVector_get_allocator(self)
+        return _gfg.DoubleVector_get_allocator(self)
 
     def pop_back(self):
-        return _gfg.FloatVector_pop_back(self)
+        return _gfg.DoubleVector_pop_back(self)
 
     def erase(self, *args):
-        return _gfg.FloatVector_erase(self, *args)
+        return _gfg.DoubleVector_erase(self, *args)
 
     def __init__(self, *args):
-        _gfg.FloatVector_swiginit(self, _gfg.new_FloatVector(*args))
+        _gfg.DoubleVector_swiginit(self, _gfg.new_DoubleVector(*args))
 
     def push_back(self, x):
-        return _gfg.FloatVector_push_back(self, x)
+        return _gfg.DoubleVector_push_back(self, x)
 
     def front(self):
-        return _gfg.FloatVector_front(self)
+        return _gfg.DoubleVector_front(self)
 
     def back(self):
-        return _gfg.FloatVector_back(self)
+        return _gfg.DoubleVector_back(self)
 
     def assign(self, n, x):
-        return _gfg.FloatVector_assign(self, n, x)
+        return _gfg.DoubleVector_assign(self, n, x)
 
     def resize(self, *args):
-        return _gfg.FloatVector_resize(self, *args)
+        return _gfg.DoubleVector_resize(self, *args)
 
     def insert(self, *args):
-        return _gfg.FloatVector_insert(self, *args)
+        return _gfg.DoubleVector_insert(self, *args)
 
     def reserve(self, n):
-        return _gfg.FloatVector_reserve(self, n)
+        return _gfg.DoubleVector_reserve(self, n)
 
     def capacity(self):
-        return _gfg.FloatVector_capacity(self)
-    __swig_destroy__ = _gfg.delete_FloatVector
+        return _gfg.DoubleVector_capacity(self)
+    __swig_destroy__ = _gfg.delete_DoubleVector
 
-# Register FloatVector in _gfg:
-_gfg.FloatVector_swigregister(FloatVector)
+# Register DoubleVector in _gfg:
+_gfg.DoubleVector_swigregister(DoubleVector)
 
 
 def in_or_out(refx, refy, newshx, newshy):
