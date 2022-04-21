@@ -91,7 +91,7 @@ std::vector<int> in_or_out(std::vector<double> refx,std::vector<double> refy, st
 
 }
   
-/*
+
 int main() {
     std::cout<<hello()<<std::endl;
 
@@ -100,9 +100,14 @@ int main() {
 
     double refx[] = {1,2,1,3,4,0};
     double refy[]= {2,3,1,-2,1,0};
-    std::vector<int> val=in_or_out(refx,refy, shx, shy, 4,6);
+
+    std::vector<double> refx1(refx, refx+6);
+    std::vector<double> refy1(refy, refy+6);
+    std::vector<double> shx1 (shx, shx+6);
+    std::vector<double> shy1 (shy, shy+6);
+    std::vector<int> val=in_or_out(refx1,refy1, shx1, shy1);
 
     printed(val);
 
     return(0);
-}*/
+}
