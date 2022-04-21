@@ -19,6 +19,7 @@ def in_or_out(self,refx,refy, meg):
 
 //export LD_LIBRARY_PATH=/opt/anaconda3/envs/tf_gpu/lib
 #include<iostream>
+#include<vector>
 
 void printed(std::vector<double> yay) {
     for(int i=0;i<yay.size();i++) std::cout<<yay[i]<<" ";
