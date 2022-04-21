@@ -17,12 +17,8 @@ def in_or_out(self,refx,refy, meg):
 //c++ -c -fpic gfg_wrap.cxx gfg.cpp -I/usr/include/python3.8
 //c++ -shared gfg.o gfg_wrap.o -o _gfg.so
 
-<<<<<<< HEAD
-//python-config --cflags
-=======
 //export LD_LIBRARY_PATH=/opt/anaconda3/envs/tf_gpu/lib
 #include<iostream>
-#include<vector>
 
 void printed(std::vector<double> yay) {
     for(int i=0;i<yay.size();i++) std::cout<<yay[i]<<" ";
