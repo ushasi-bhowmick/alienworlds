@@ -29,7 +29,7 @@ def test_multi_loops_3d(x):
     global fl
     np.random.seed(1234*x)
     sim_3d = dysim.Simulator (100, 3000, 300, np.pi/3, limb_u1=0.0, limb_u2=0.0)
-    meg_3d = dysim.Megastructure(200, True, 1, ecc=0.0)
+    meg_3d = dysim.Megastructure(200, True, 50, ecc=0.0)
     sim_3d.add_megs(meg_3d)
     sim_3d.set_frame_length()
     sim_3d.simulate_transit()
@@ -41,7 +41,7 @@ def test_multi_loops_2d(x):
     global testg
     np.random.seed(3456*x)
     sim_2d = dysim.Simulator (100, 3000, 300, np.pi/3, limb_u1=0.0, limb_u2=0.0)
-    meg_2d = dysim.Megastructure(200, True, 1, isrot=True, ecc=0.0)
+    meg_2d = dysim.Megastructure(200, True, 50, isrot=True, ecc=0.0)
     sim_2d.add_megs(meg_2d)
     sim_2d.set_frame_length()
     if(x==0): print("Count:", meg_2d.set, x, np.pi/sim_2d.frame_length)
