@@ -33,7 +33,7 @@ frame_l=man.list()
 #variable parameters
 # Rpl: 1, 5, 10, 30, 50
 # Rorb: 2, 4, 16, 64, 128
-Rpl=100*rpl_arr[7]
+Rpl=100*rpl_arr[6]
 
 Rorb=200
 u1=0.1
@@ -65,7 +65,7 @@ def test_multi_loops_2d(x):
     sim_2d.simulate_transit()  
     return(sim_2d.lc) 
 
-for r in rorb_arr[7:]:
+for r in rorb_arr:
     Rorb=r*100
     global frm
     for u1ss in [0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]:
