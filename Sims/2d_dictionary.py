@@ -24,7 +24,7 @@ rorb_arr=np.around(np.logspace(0.31,3,10), 2)
 
 #resolution setters
 frame_res=300
-mcmc_pts=1000
+mcmc_pts=2000
 
 man = Manager()
  
@@ -33,7 +33,7 @@ frame_l=man.list()
 #variable parameters
 # Rpl: 1, 5, 10, 30, 50
 # Rorb: 2, 4, 16, 64, 128
-Rpl=100*rpl_arr[6]
+Rpl=100*rpl_arr[5]
 
 Rorb=200
 u1=0.1
