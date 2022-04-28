@@ -116,7 +116,7 @@ def multishape():
     frm = np.linspace(-fl,fl, 500)
     df['frame']=frm
 
-    for s in range(3,15):
+    for s in range(3,20):
         sides = s
     # start 4 worker processes
         with Pool(processes=40) as pool:
