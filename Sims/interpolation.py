@@ -1,8 +1,9 @@
 from cmath import phase
+from hashlib import new
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from scipy.interpolate import interp1d, interpn
+from scipy.interpolate import interp1d, interpn, griddata
 from transit import occultnonlin, occultquad
 from scipy import interpolate
 import time
@@ -10,7 +11,7 @@ import time
 #we need to change some strategies, because its too slow
 #Im gonna try scipy
 
-def test_func(p,u1,u2,rorb,imp):
+def test_func():
     #read all the data and store it in dataframes ... ig?
     df_master=[]
     rpl_arr=np.around(np.linspace(0.01,0.5, 10) ,2)
@@ -30,7 +31,6 @@ def test_func(p,u1,u2,rorb,imp):
         for ros in rorb_arr:
             df=pd.read_csv('../Computation_Directory/Rpl_'+str(np.around(rs*100,2))+'/2d_rorb_'+str(ros)+'.csv')
 
-            print(rs, ros)
             op = [[[np.array(df['u1_'+str(u1s)+'_u2_'+str(u2s)+'_b_'+str(bs)]) for u2s in u2_arr] 
             for u1s in u1_arr] for bs in b_arr]
             
@@ -45,10 +45,10 @@ def test_func(p,u1,u2,rorb,imp):
     print(np.array(vals).shape, np.array(phases).shape)
     
 
+    return(points,vals,phases)
 
 
-
-def new_plar(ph,p,u1,u2,rorb,imp):
+def new_plar(ph,p,rorb,imp,u1,u2):
     znp = np.sqrt(np.abs(rorb*np.sin(ph*np.pi))**2+imp**2)
     a= occultquad(znp,p,[u1,u2])  
     return(a)
@@ -155,22 +155,42 @@ def lc_interpolate(ph, rpl, rorb, b, u1, u2):
 
     return(f(ph))
 
-tic=time.time()
+def lc_interpolate_v2(ph, rpl, rorb, b, u1, u2, points, vals, phases):
+    prpl, prorb, pb, pu1, pu2 = points
+    
+    # outt = [interpn((prorb,pb, pu1, pu2), np.array(vals)[i], [rorb,b,u1,u2])[0] for i in range(10)]
 
-# def value_func_3d(x, y, z):
-#     return 2 * x + 3 * y - z
-# x = np.linspace(0, 4, 5)
-# y = np.linspace(0, 5, 6)
-# z = np.linspace(0, 6, 7)
-# points = (x, y, z)
-# values = value_func_3d(*np.meshgrid(*points, indexing='ij'))
-# point = np.array([2.21, 3.12, 1.15])
-# print(interpn(points, values, point))
+    chp1 = interp1d(pu2, vals, kind='linear', axis=4, fill_value='extrapolate')(u2)
+    chp2 = interp1d(pu1, chp1, kind='quadratic', axis=3, fill_value='extrapolate')(u1)
+    chp3 = interp1d(pb, chp2, kind='linear', axis=2, fill_value='extrapolate')(b)
+    chp4 = interp1d(prorb, chp3, kind='linear', axis=1, fill_value='extrapolate')(rorb)
+    out = interp1d(prpl, chp4, kind='quadratic', axis=0, fill_value='extrapolate')(rpl)
+    phf =  10**(interp1d(np.array(prorb), np.log10(np.array(phases)[0,:,-1]),kind='quadratic',fill_value='extrapolate')(rorb))
+    
+    ph_temp = np.linspace(-phf,phf,300)
+    fin_out=interp1d(ph_temp,out,kind='linear', fill_value='extrapolate')(ph)
+    return(fin_out)
 
-# print( np.array(values).shape)
-test_func(1,1,1,1,1)
 
-print("time:",time.time()-tic," s")
+# tic=time.time()
+
+# points, vals, phases = test_func()
+# print("time:",time.time()-tic," s")
+
+
+
+
+# df=pd.read_csv('2d3d_0.2R_limb_circ_corr.csv')
+# ph=np.array(df['frame'])
+# flch=np.array(df['2d'])
+# fl = lc_interpolate_v2(ph,0.2,5,0.0,0.6,0.0, points,vals,phases)
+# print("time:",time.time()-tic," s")
+
+# plt.plot(ph, fl)
+# plt.plot(ph, flch)
+
+
+# plt.show()
 
 # a,b, t1, t2=lc_interpolate(0.12,502.47,0.201,0.3,0.201)
 # print(len(a),np.array(b).shape)
