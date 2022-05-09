@@ -11,7 +11,7 @@ import time
 #we need to change some strategies, because its too slow
 #Im gonna try scipy
 
-def test_func():
+def load_grids():
     #read all the data and store it in dataframes ... ig?
     df_master=[]
     rpl_arr=np.around(np.linspace(0.01,0.5, 10) ,2)
@@ -165,7 +165,7 @@ def lc_interpolate_v2(ph, rpl, rorb, b, u1, u2, points, vals, phases):
     chp3 = interp1d(pb, chp2, kind='linear', axis=2, fill_value='extrapolate')(b)
     chp4 = interp1d(prorb, chp3, kind='linear', axis=1, fill_value='extrapolate')(rorb)
     out = interp1d(prpl, chp4, kind='quadratic', axis=0, fill_value='extrapolate')(rpl)
-    phf =  10**(interp1d(np.array(prorb), np.log10(np.array(phases)[0,:,-1]),kind='quadratic',fill_value='extrapolate')(rorb))
+    phf =  10**(interp1d(np.array(prorb), np.log10(np.array(phases)[0,:,-1]),kind='cubic',fill_value='extrapolate')(rorb))
     
     ph_temp = np.linspace(-phf,phf,300)
     fin_out=interp1d(ph_temp,out,kind='linear', fill_value='extrapolate')(ph)
@@ -176,20 +176,24 @@ def lc_interpolate_v2(ph, rpl, rorb, b, u1, u2, points, vals, phases):
 
 # points, vals, phases = test_func()
 # print("time:",time.time()-tic," s")
-
+# fig, ax = plt.subplots(2,1,figsize=(7,10))
 
 
 
 # df=pd.read_csv('2d3d_0.2R_limb_circ_corr.csv')
 # ph=np.array(df['frame'])
 # flch=np.array(df['2d'])
-# fl = lc_interpolate_v2(ph,0.2,5,0.0,0.6,0.0, points,vals,phases)
+# fl = lc_interpolate_v2(ph,0.2,4.98,0.0,0.6,0.0, points,vals,phases)
 # print("time:",time.time()-tic," s")
 
-# plt.plot(ph, fl)
-# plt.plot(ph, flch)
+# ax[0].set_title('Rpl:0.2, Rorb:5, u1:0.6, u2:0.0, b:0.0')
+# ax[0].plot(ph, fl, label='fit')
+# ax[0].plot(ph, flch, label='test')
+# ax[0].legend()
 
+# ax[1].plot(ph, flch - fl)
 
+# plt.savefig('interpset2.jpg')
 # plt.show()
 
 # a,b, t1, t2=lc_interpolate(0.12,502.47,0.201,0.3,0.201)
