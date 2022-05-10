@@ -24,7 +24,7 @@ rorb_arr=np.around(np.logspace(0.31,3,10), 2)
 
 #resolution setters
 frame_res=300
-mcmc_pts=7000
+mcmc_pts=5000
 
 man = Manager()
  
@@ -33,7 +33,7 @@ frame_l=man.list()
 #variable parameters
 # Rpl: 1, 5, 10, 30, 50
 # Rorb: 2, 4, 16, 64, 128
-Rpl=100*rpl_arr[1]
+Rpl=100*rpl_arr[2]
 
 Rorb=200
 u1=0.1
@@ -79,7 +79,7 @@ for r in rorb_arr:
                 u2=u2ss  
                 frame_l[:]=[]
                 # start 4 worker processes
-                with Pool(processes=40) as pool:
+                with Pool(processes=10) as pool:
                     lc2dsum = np.asarray(pool.map(test_multi_loops_2d, range(80)))
                     lc2d = np.mean(lc2dsum, axis = 0)
                     lc2dstd = np.sqrt(np.mean((lc2dsum-lc2d)**2, axis=0))
