@@ -25,8 +25,8 @@ def test_multi_loops_3d(x):
     global testg
     global fl
     np.random.seed(1234*x)
-    sim_3d = dysim.Simulator (100, 50000, 500, fl, limb_u1=0.6, limb_u2=0.0)
-    meg_3d = dysim.Megastructure(200, True, 10)
+    sim_3d = dysim.Simulator (100, 10000, 500, fl, limb_u1=0.397, limb_u2=0.265)
+    meg_3d = dysim.Megastructure(138.16, True, 30.73, incl=np.arcsin(1.16*100/138.16))
     sim_3d.add_megs(meg_3d)
     sim_3d.set_frame_length()
     sim_3d.simulate_transit()
@@ -38,8 +38,8 @@ def test_multi_loops_2d(x):
     global testg
     np.random.seed(3456*x)
     global fl
-    sim_2d = dysim.Simulator (100, 20000, 500, fl, limb_u1=0.0, limb_u2=0.0)
-    meg_2d = dysim.Megastructure(200, True, 20, isrot=True)
+    sim_2d = dysim.Simulator (100, 10000, 500, fl, limb_u1=0.0, limb_u2=0.0)
+    meg_2d = dysim.Megastructure(138.16, True, 30.73, incl=np.arcsin(1.16*100/138.16), isrot=True)
     sim_2d.add_megs(meg_2d)
     sim_2d.set_frame_length()
     if(x==0): print("Count:", meg_2d.set, x, np.pi/sim_2d.frame_length)
@@ -100,9 +100,9 @@ def twoD_vs_threeD():
     ax[1].legend()
     plt.suptitle('2D vs 3D transiting objects')
     df = pd.DataFrame(zip(frm, lc2d, lc2dstd, lc3d, lc3dstd), columns=['frame','2d','2dstd','3d','3dstd'])
-    df.to_csv('2d3d_0.1R_limb_circ.csv', index='False', sep=',')
+    df.to_csv('2d3d_811.csv', index='False', sep=',')
     #np.savetxt('2d3d_0.1R_circ.csv', np.transpose(np.array([frm, lc2d, lc2dstd, lc3d, lc3dstd])),delimiter=',', header='frame, 2d, 2dstd, 3d, 3dstd')
-    plt.savefig('2d3d_0.1R_limb_circ.png')
+    plt.savefig('2d3d_811.png')
     #plt.show()
 
 def multishape():
@@ -148,4 +148,4 @@ def multishape():
     df.to_csv('multishape.csv', index='False', sep=',')
     plt.savefig('multishape.png')
 
-multishape()
+twoD_vs_threeD()
