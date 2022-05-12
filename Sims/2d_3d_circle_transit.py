@@ -1,4 +1,6 @@
 import random
+
+from zmq import PLAIN
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -8,6 +10,8 @@ import time
 import pandas as pd
 from transit import occultnonlin, occultquad
 from multiprocessing import Process, Pool
+from scipy.interpolate import interp1d
+from scipy.optimize import curve_fit
 
 #yo! kumaran recieving? over and out.
 # 
@@ -16,6 +20,18 @@ start_time = time.time()
 fl = np.pi/3
 sides = 3
 
+Rpl=10
+Rorb=200
+u1=0.1
+u2=0.1
+Rstar=100
+b=0
+ecc=0
+per_off=0 
+
+
+res = 30000
+
 def new_plar(ph,p,u1,u2,rorb,imp):
     znp = np.sqrt(np.abs(rorb*np.sin(ph*np.pi))**2+imp**2)
     a= occultquad(znp,p,[u1,u2])  
@@ -23,27 +39,41 @@ def new_plar(ph,p,u1,u2,rorb,imp):
 
 def test_multi_loops_3d(x):
     global testg
+    global Rpl
+    global u1
+    global u2
+    global b
     global fl
+    global res
+    global Rorb
     np.random.seed(1234*x)
-    sim_3d = dysim.Simulator (100, 10000, 500, fl, limb_u1=0.397, limb_u2=0.265)
-    meg_3d = dysim.Megastructure(138.16, True, 30.73, incl=np.arcsin(1.16*100/138.16))
+    sim_3d = dysim.Simulator (Rstar, res, 300, fl, limb_u1=u1, limb_u2=u2)
+    meg_3d = dysim.Megastructure(Rorb, True, Rpl, incl=np.arcsin(b*Rstar/Rorb), per_off=-1.02*np.pi/2, ecc=0.01)
     sim_3d.add_megs(meg_3d)
     sim_3d.set_frame_length()
     sim_3d.simulate_transit()
     fl=sim_3d.frame_length
-    if(x==0): print("Count:", meg_3d.set, x, np.pi/sim_3d.frame_length)
+    #if(x==0): print("Count:", meg_3d.set, x, np.pi/sim_3d.frame_length)
     return(sim_3d.lc)
 
 def test_multi_loops_2d(x):
     global testg
     np.random.seed(3456*x)
+    global Rpl
+    global u1
+    global u2
+    global b
     global fl
-    sim_2d = dysim.Simulator (100, 10000, 500, fl, limb_u1=0.0, limb_u2=0.0)
-    meg_2d = dysim.Megastructure(138.16, True, 30.73, incl=np.arcsin(1.16*100/138.16), isrot=True)
+    global res
+    global Rorb
+    sim_2d = dysim.Simulator (Rstar, res, 500, fl, limb_u1=u1, limb_u2=u2)
+    meg_2d = dysim.Megastructure(Rorb, True, Rpl, incl=np.arcsin(b*Rstar/Rorb), isrot=True, per_off=-1.04*np.pi/2, ecc=0.007)
     sim_2d.add_megs(meg_2d)
     sim_2d.set_frame_length()
-    if(x==0): print("Count:", meg_2d.set, x, np.pi/sim_2d.frame_length)
+    
+    #if(x==0): print("Count:", meg_2d.set, x, np.pi/sim_2d.frame_length)
     sim_2d.simulate_transit()
+    fl=sim_2d.frame_length
     return(sim_2d.lc)
 
 def shape_test(x):
@@ -59,6 +89,53 @@ def shape_test(x):
     sim_2d.simulate_transit()
     return(sim_2d.lc)
 
+def fit_alg(phl, rpll, rorbl, bl):
+    global Rpl
+    global u1
+    global u2
+    global b
+    global fl
+    global Rorb
+    Rpl = rpll*Rstar
+    u1 = 0.3975
+    u2 = 0.2650
+    b = bl
+    Rorb = rorbl*Rstar
+    with Pool(processes=40) as pool:
+        lc2dsum = np.asarray(pool.map(test_multi_loops_2d, range(80)))
+        lc2d = np.mean(lc2dsum, axis = 0)
+        lc2dstd = np.sqrt(np.mean((lc2dsum-lc2d)**2, axis=0))
+        #print("--- %s min ---" % ((time.time() - start_time)/60))
+    
+    phin = np.linspace(-fl,fl,500)
+    print('go')
+    val = interp1d(phin, lc2d, kind='linear', fill_value='extrapolate')(phl*np.pi)
+    return(val-1)
+
+def fit_alg_3d(phl, rpll, rorbl, bl):
+    global Rpl
+    global u1
+    global u2
+    global b
+    global fl
+    global Rorb
+    Rpl = rpll*Rstar
+    u1 = 0.3975
+    u2 = 0.2650
+    b = bl
+    Rorb = rorbl*Rstar
+    with Pool(processes=40) as pool:
+
+        lc3dsum = np.asarray(pool.map(test_multi_loops_3d, range(80)))
+        # print("--- %s min ---" % ((time.time() - start_time)/60))
+
+        lc3d = np.mean(lc3dsum, axis = 0)
+        lc3dstd = np.sqrt(np.mean((lc3dsum-lc3d)**2, axis=0))
+    
+    phin = np.linspace(-fl,fl,300)
+    print('go')
+    val2 = interp1d(phin, lc3d, kind='linear', fill_value='extrapolate')(phl*np.pi)
+    return(val2-1)
 
 def twoD_vs_threeD():
     global fl
@@ -148,4 +225,35 @@ def multishape():
     df.to_csv('multishape.csv', index='False', sep=',')
     plt.savefig('multishape.png')
 
-twoD_vs_threeD()
+
+df = pd.read_csv('811_fit.csv')
+ph = np.array(df['phase'])
+
+df_noise = df[(df.phase<-0.2) | (df.phase>0.2)]
+indf = df[(df.phase>-0.2) | (df.phase<0.2)]
+noise = np.std(np.array(df_noise['flux']))
+
+
+flux_raw = np.array(df['flux'])
+flux = fit_alg(ph, 0.334, 1.31, 1.13)
+flux3d = fit_alg_3d(ph, 0.045, 1.35,0.901)
+#off = ph[np.argmin(flux)]
+# popt2, pcov2 = curve_fit(fit_alg, indf['phase'], indf['flux'], 
+#      bounds=([0.3,1.2,1.12], [0.35,1.5,1.14]))
+
+plt.plot(ph, flux_raw)
+plt.plot(ph, flux)
+plt.plot(ph, flux3d)
+#plt.plot(ph, flux - flux_raw)
+plt.xlim(-0.3,0.3)
+
+#fluxfit=fit_alg(ph, *popt2)
+rchi=np.mean((flux-flux_raw)**2/noise**2)
+rchi3d=np.mean((flux3d-flux_raw)**2/noise**2)
+print(rchi, rchi3d)
+# plt.plot(ph, fluxfit)
+# print(popt2)
+df['model_fit']=flux
+df.to_csv('811_fit.csv', index=False)
+# print(np.mean((fluxfit-flux_raw)**2/noise**2))
+plt.savefig('temp.png')
