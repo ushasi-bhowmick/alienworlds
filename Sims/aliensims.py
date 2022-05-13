@@ -463,20 +463,20 @@ class Transit_Animate:
 
 # 4rth class for a plotting and saving data library
 
-# sim1 = Simulator(100, 5000, 100, np.pi/3)
-# # # sim2 = Simulator(100, 1000, 100, np.pi)
+sim1 = Simulator(100, 5000, 100, np.pi/3)
+# # sim2 = Simulator(100, 1000, 100, np.pi)
 
-# meg_2d = Megastructure(300, True, 10, isrot=True, incl=19.5*np.pi/180, ph_offset=0, elevation=0, ecc=0, per_off=np.pi/2)
-# # # meg_2d2 = Megastructure(120, True, 20, isrot=True, incl=0, ph_offset=0, elevation=0)
+meg_2d = Megastructure(300, True, 10, incl=19.5*np.pi/180, ph_offset=0, elevation=0, ecc=0, per_off=np.pi/2)
+# # meg_2d2 = Megastructure(120, True, 20, isrot=True, incl=0, ph_offset=0, elevation=0)
 
-# sim1.add_megs(meg_2d)
-# sim1.simulate_transit()
-# # # sim2.add_megs(meg_2d2)
-# # # sim2.simulate_transit()
+sim1.add_megs(meg_2d)
+sim1.simulate_transit()
+# # sim2.add_megs(meg_2d2)
+# # sim2.simulate_transit()
 
 
-# # TA = Transit_Animate(sim1.road, sim1.megs, sim1.lc, sim1.frames)
-# # TA.go()
+TA = Transit_Animate(sim1.road, sim1.megs, sim1.lc, sim1.frames)
+TA.go()
 # plt.plot(sim1.lc)
 # # # plt.plot(sim2.lc)
 # plt.show()
