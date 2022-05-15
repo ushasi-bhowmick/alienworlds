@@ -375,10 +375,10 @@ class Transit_Animate:
         self.lc = lc
         self.megs = megs
         self.phase = phase
-        plt.style.use('dark_background')
+        plt.style.use('seaborn-bright')
         plt.rcParams["font.family"] = "serif"
         self.fig = plt.figure(figsize=(7,7))
-        self.fig.patch.set_facecolor('#101010')
+        self.fig.patch.set_facecolor('#CCCCCC')
         self.ax1 = plt.subplot2grid((3, 3), (0, 0), rowspan=2, colspan=2)
         self.ax2 = plt.subplot2grid((3, 3), (2, 0), colspan=3)
         self.ax3 = plt.subplot2grid((3, 3), (0, 2), rowspan=2)
@@ -418,13 +418,15 @@ class Transit_Animate:
         t_orbs = [el.Rorbit/self.gopath.Rstar for el in self.megs]
         t_offs = [round(el.ph_offset/np.pi,3) for el in self.megs]
         t_vels = [el.o_vel for el in self.megs]
+        t_incl = [round(el.incl*180/np.pi,2) for el in self.megs]
 
-        props = dict(boxstyle='round', facecolor='black', alpha=0.5, pad=1)
+        props = dict(boxstyle='round', facecolor='#dddddd', alpha=0.5, pad=1)
         txt = "$R_{pl}:$\n"+str(np.round(t_rpls,3)[:3])+"$R_{star}$\nOrbit:\n"+str(np.round(t_orbs,
-            3)[:3])+"$R_{star}$\nOffset:\n"+str(t_offs[:3])+"$\pi$\nVelocity:\n"+str(t_vels[:3])
+            3)[:3])+"$R_{star}$\nOffset:\n"+str(t_offs[:3])+"$\pi$\nVelocity:\n"+str(t_vels[:3]
+            )+"$\pi$\nIncl:\n"+str(t_incl[:3])
 
         self.ax3.text(0.5, 0.5, txt, fontsize=9,transform=self.ax3.transAxes,  horizontalalignment='center',
-            verticalalignment='center', linespacing=2, bbox=props, color='white')
+            verticalalignment='center', linespacing=2, bbox=props, color='black')
 
         return self.ln,
 
@@ -433,7 +435,7 @@ class Transit_Animate:
         zst=1
         zpl=[0 if np.all(el[frame]['z']<0) else 2 for el in self.gopath.traj]
         self.ax1.set_aspect(1)
-        self.ax1.fill(self.gopath.Rstar*np.cos(self.th), self.gopath.Rstar*np.sin(self.th), zorder = zst, color='#fff44f')
+        self.ax1.fill(self.gopath.Rstar*np.cos(self.th), self.gopath.Rstar*np.sin(self.th), zorder = zst, color='#ffae42')
 
         self.ax1.set_xlim(-self.maxorb*1.2,self.maxorb*1.2)
         self.ax1.set_ylim(-self.maxorb*1.2,self.maxorb*1.2)
@@ -442,22 +444,24 @@ class Transit_Animate:
         for el in self.gopath.traj:
             self.ax1.fill(el[frame]['x'],el[frame]['y'], zorder=zpl[i], color='black', edgecolor='gray')
             i+=1
-        for el in self.gopath.centres:
-            el=np.asarray(el)
-            a=el[:,0]*(el[:,2]>0)
-            b=el[:,1]*(el[:,2]>0)
-            self.ax1.scatter(a,b,marker='.',s=1, zorder=5, color='red')
-            a=el[:,0]*(el[:,2]<0)
-            b=el[:,1]*(el[:,2]<0)
-            self.ax1.scatter(a,b,marker='.',s=1, zorder=0, color='red')
+        # for el in self.gopath.centres:
+        #     el=np.asarray(el)
+        #     a=el[:,0]*(el[:,2]>0)
+        #     b=el[:,1]*(el[:,2]>0)
+        #     self.ax1.scatter(a,b,marker='.',s=1, zorder=5, color='red')
+        #     a=el[:,0]*(el[:,2]<0)
+        #     b=el[:,1]*(el[:,2]<0)
+        #     self.ax1.scatter(a,b,marker='.',s=1, zorder=0, color='red')
         self.ax2.scatter(self.phase[frame], self.lc[frame], color='red', marker='.')
         return self.ln,
 
     def go(self,ifsave=False,filepath=""):
         ani = animation.FuncAnimation(self.fig, self.update, frames=np.arange(0,len(self.phase)), interval=1,init_func=self.init_frame)
         if(ifsave):
+            print('here', filepath)
             writergif = animation.PillowWriter(fps=20) 
-            ani.save(filepath, writer=writergif, savefig_kwargs=dict(facecolor='#101010'))
+            ani.save(filepath, writer=writergif, savefig_kwargs=dict(facecolor='#CCCCCC'))
+            plt.show()
         else: plt.show()
 
 
@@ -466,7 +470,7 @@ class Transit_Animate:
 sim1 = Simulator(100, 5000, 100, np.pi/3)
 # # sim2 = Simulator(100, 1000, 100, np.pi)
 
-meg_2d = Megastructure(300, True, 10, incl=19.5*np.pi/180, ph_offset=0, elevation=0, ecc=0, per_off=np.pi/2)
+meg_2d = Megastructure(300, True, 40, isrot=True, incl=20*np.pi/180, ph_offset=0, elevation=0, ecc=0, per_off=np.pi/2)
 # # meg_2d2 = Megastructure(120, True, 20, isrot=True, incl=0, ph_offset=0, elevation=0)
 
 sim1.add_megs(meg_2d)
