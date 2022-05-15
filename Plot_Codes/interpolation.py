@@ -16,7 +16,7 @@ def load_grids():
     df_master=[]
     rpl_arr=np.around(np.linspace(0.01,0.5, 10) ,2)
     rorb_arr=np.around(np.logspace(0.31,3,10), 2)
-    b_arr=[0.0,0.2,0.4,0.6,0.8]
+    b_arr=[0.0,0.2,0.4,0.6,0.8,1,1.2]
     u1_arr=[0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]
     u2_arr=[0.0,0.2,0.4]
 
@@ -72,7 +72,7 @@ def lc_read(rpl, rorb, b, u1, u2):
     #rpl_arr=[rpl_arr[i] for i in range(0,len(rpl_arr)) if i!=2]
     rorb_arr=np.around(np.logspace(0.31,3,10), 2)
     #rorb_arr=[rorb_arr[i] for i in range(0,len(rorb_arr)) if i!=8]
-    b_arr=[0,0.2,0.4,0.6,0.8]
+    b_arr=[0,0.2,0.4,0.6,0.8,1,1.2]
     u1_arr=[0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8]
     u2_arr=[0.0,0.2,0.4]
     #print(rorb_arr, rpl_arr)
@@ -161,11 +161,11 @@ def lc_interpolate_v2(ph, rpl, rorb, b, u1, u2, points, vals, phases):
     # outt = [interpn((prorb,pb, pu1, pu2), np.array(vals)[i], [rorb,b,u1,u2])[0] for i in range(10)]
 
     chp1 = interp1d(pu2, vals, kind='linear', axis=4, fill_value='extrapolate')(u2)
-    chp2 = interp1d(pu1, chp1, kind='quadratic', axis=3, fill_value='extrapolate')(u1)
-    chp3 = interp1d(pb, chp2, kind='linear', axis=2, fill_value='extrapolate')(b)
+    chp2 = interp1d(pu1, chp1, kind='linear', axis=3, fill_value='extrapolate')(u1)
+    chp3 = interp1d(pb, chp2, kind='quadratic', axis=2, fill_value='extrapolate')(b)
     chp4 = interp1d(prorb, chp3, kind='linear', axis=1, fill_value='extrapolate')(rorb)
     out = interp1d(prpl, chp4, kind='quadratic', axis=0, fill_value='extrapolate')(rpl)
-    phf =  10**(interp1d(np.array(prorb), np.log10(np.array(phases)[0,:,-1]),kind='cubic',fill_value='extrapolate')(rorb))
+    phf =  10**(interp1d(np.log10(np.array(prorb)), np.log10(np.array(phases)[0,:,-1]),kind='linear',fill_value='extrapolate')(np.log10(rorb)))
     
     ph_temp = np.linspace(-phf,phf,300)
     fin_out=interp1d(ph_temp,out,kind='linear', fill_value='extrapolate')(ph)
@@ -174,26 +174,27 @@ def lc_interpolate_v2(ph, rpl, rorb, b, u1, u2, points, vals, phases):
 
 # tic=time.time()
 
-# points, vals, phases = test_func()
+# points, vals, phases = load_grids()
 # print("time:",time.time()-tic," s")
 # fig, ax = plt.subplots(2,1,figsize=(7,10))
 
 
 
-# df=pd.read_csv('2d3d_0.2R_limb_circ_corr.csv')
+# df=pd.read_csv('2d3d_0.1R_limb_circ.csv')
 # ph=np.array(df['frame'])
 # flch=np.array(df['2d'])
-# fl = lc_interpolate_v2(ph,0.2,4.98,0.0,0.6,0.0, points,vals,phases)
+# fl = lc_interpolate_v2(ph,0.1,2,0.0,0.6,0.0, points,vals,phases)
 # print("time:",time.time()-tic," s")
 
 # ax[0].set_title('Rpl:0.2, Rorb:5, u1:0.6, u2:0.0, b:0.0')
-# ax[0].plot(ph, fl, label='fit')
 # ax[0].plot(ph, flch, label='test')
+# ax[0].plot(ph, fl, label='fit')
+
 # ax[0].legend()
 
 # ax[1].plot(ph, flch - fl)
 
-# plt.savefig('interpset2.jpg')
+# # plt.savefig('interpset2.jpg')
 # plt.show()
 
 # a,b, t1, t2=lc_interpolate(0.12,502.47,0.201,0.3,0.201)
