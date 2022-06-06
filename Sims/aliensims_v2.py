@@ -90,14 +90,17 @@ class Megastructure:
 
     class Star:
         def __init__(self):
-            self.a = 0
+            self.isstar = True
+            self.Rcircle = 0
+            self.u1 = 0
+            self.u2 = 0
 
     class Holes:
         def __init__(self):
             self.a = 0
 
     def __init__(self, Rorb=1.0, iscircle = False, Rcircle = 1.0, isrot = False, ph_offset = 0.0, 
-        o_vel = 1.0, elevation = 0.0, Plcoords=[], ecc=0.0, per_off=0.0):
+        o_vel = 1.0, elevation = 0.0, Plcoords=[], ecc=0.0, per_off=0.0, incl=0.0):
 
         """Megastructure Module
 
@@ -131,6 +134,7 @@ class Megastructure:
         self.ph_offset = ph_offset
         self.o_vel = o_vel
         self.elevation = elevation
+        self.incl = incl
         self.centre = np.zeros(3)
 
         #kepler orbits
@@ -157,7 +161,7 @@ class Megastructure:
             x = rad*np.cos(ang*i)
             y = rad*np.sin(ang*i)
             coord.append([x,y,0])
-        self.Plcoords = coord
+        self.Plcoords = np.array(coord)
         return(np.array(coord))
 
     def set_shape(self, Plcoords, iscircle, Rcircle):
@@ -199,8 +203,8 @@ class Megastructure:
         """
         kep_corr = self.Rorbit*(1-self.ecc**2)/(1+self.ecc*np.cos(self.o_vel*frm+self.ph_offset-self.periapsis_offset))
         xt = kep_corr*np.sin(self.o_vel*frm+self.ph_offset)
-        zt = kep_corr*np.cos(self.o_vel*frm+self.ph_offset)
-        yt = self.elevation
+        zt = kep_corr*np.cos(self.incl)*np.cos(self.o_vel*frm+self.ph_offset)
+        yt = self.elevation+kep_corr*np.sin(self.incl)*np.cos(self.o_vel*frm+self.ph_offset)
         temp = np.asarray([[xt+el[0], yt+el[1], zt+el[2]] for el in self.Plcoords])
         return(temp,np.asarray([self.centre[0]+xt, self.centre[1]+yt, self.centre[2]+zt]))
 
