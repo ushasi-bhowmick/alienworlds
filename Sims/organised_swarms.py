@@ -1,5 +1,5 @@
 import random
-from turtle import color, pos
+#from turtle import color, pos
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -11,7 +11,7 @@ start_time = time.time()
 
 #redo the animation frames coz this is slightly different...
 #we start by randomly placing panels on the dyson sphere
-n = 35
+n = 10
 phi = 2*np.pi/n
 
 Rstar = 100
@@ -46,7 +46,7 @@ ymax = max(possibilities[:,1])
 sum_road = []
 sum_lc = []
 
-sim1 = dy.Simulator(Rstar, 5000, no_pt, np.pi, limb=0.0)
+sim1 = dy.Simulator(Rstar, 5000, no_pt, np.pi, limb_u1=0.0)
 stash=np.array([[0,0]])
 for it in range(0,maxout):
     sim1.megs=[]
@@ -93,7 +93,7 @@ for it in range(0,maxout):
     #print("check total:", len(possibilities))
         
     print("Accepted:",len(sim1.megs), len(stash))
-    road, lc = sim1.simulate_transit()
+    road, ph, lc = sim1.simulate_transit()
     sum_road.append(road)
     sum_lc.append(lc)
     sim1.initialize()
@@ -109,10 +109,10 @@ print(len(sum_road), len(sum_lc))
 #redo the animation frame coz we need a progressive animation showing
 #evolution of dyson swarm
 
-plt.style.use('dark_background')
+#plt.style.use('dark_background')
 plt.rcParams["font.family"] = "serif"
 fig = plt.figure(figsize=(7,7))
-fig.patch.set_facecolor('#101010')
+fig.patch.set_facecolor('#CCCCCC')
 ax1 = plt.subplot2grid((3, 3), (0, 0), rowspan=2, colspan=2)
 ax2 = plt.subplot2grid((3, 3), (2, 0), colspan=3)
 ax3 = plt.subplot2grid((3, 3), (0, 2), rowspan=2)
@@ -213,6 +213,6 @@ ani = animation.FuncAnimation(fig, update, frames=fr_sum, interval=1,
 print(np.array(net).shape)
 np.savetxt('sphere_conc_org_1.csv',net,delimiter=' ', header='phase, panels:1,2,4,8,16...')
 writergif = animation.PillowWriter(fps=15) 
-ani.save('completed_sphere_org_1.gif', writer=writergif, savefig_kwargs=dict(facecolor='#101010'))
+ani.save('completed_sphere_org_1.gif', writer=writergif, savefig_kwargs=dict(facecolor='#CCCCCC'))
 
 #plt.show()
