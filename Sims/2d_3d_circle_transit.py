@@ -14,23 +14,26 @@ from scipy.interpolate import interp1d
 from scipy.optimize import curve_fit
 
 #yo! kumaran recieving? over and out.
-# 
+# flip , 120
+#50: 1500   45:2000  39:2500  34:3000  28:3500  23:4000  17:5000  12:6000
+#6: 12000   #1:20000
+
 testg = 0
 start_time = time.time()
 fl = np.pi/3
 sides = 3
 
-Rpl=5
+Rpl=39
 Rorb=200
-u1=0.1
-u2=0.1
+u1=0
+u2=0
 Rstar=100
 b=0
 ecc=0
 per_off=0 
 
 
-res = 5000
+res = 2000
 
 def new_plar(ph,p,u1,u2,rorb,imp):
     znp = np.sqrt(np.abs(rorb*np.sin(ph*np.pi))**2+imp**2)
@@ -48,7 +51,7 @@ def test_multi_loops_3d(x):
     global Rorb
     np.random.seed(1234*x)
     sim_3d = dysim.Simulator (Rstar, res, 500, fl, limb_u1=u1, limb_u2=u2)
-    meg_3d = dysim.Megastructure(Rorb, True, Rpl, incl=np.arcsin(b*Rstar/Rorb), per_off=-1.02*np.pi/2, ecc=0.01)
+    meg_3d = dysim.Megastructure(Rorb, True, Rpl, incl=np.arcsin(b*Rstar/Rorb), per_off=0, ecc=0.0)
     sim_3d.add_megs(meg_3d)
     sim_3d.set_frame_length()
     sim_3d.simulate_transit()
@@ -67,7 +70,7 @@ def test_multi_loops_2d(x):
     global res
     global Rorb
     sim_2d = dysim.Simulator (Rstar, res, 500, fl, limb_u1=u1, limb_u2=u2)
-    meg_2d = dysim.Megastructure(Rorb, True, Rpl, incl=np.arcsin(b*Rstar/Rorb), isrot=True, per_off=-1.04*np.pi/2, ecc=0.007)
+    meg_2d = dysim.Megastructure(Rorb, True, Rpl, incl=np.arcsin(b*Rstar/Rorb), isrot=True, per_off=0, ecc=0)
     sim_2d.add_megs(meg_2d)
     sim_2d.set_frame_length()
     sim_2d.simulate_transit()
@@ -77,15 +80,15 @@ def test_multi_loops_2d(x):
 
 def solar_system(x):
     np.random.seed(x*11245)
-    sim = dysim.Simulator(1, 20000, 5000, np.pi, limb_u1=0, limb_u2=0)
-    meg_mc = dysim.Megastructure(83.86/40, True, 0.0035*3, ecc=0, o_vel=8.82, ph_offset=0.7)
-    meg_vs = dysim.Megastructure(154.82/40, True, 0.0086*3, ecc=0, o_vel=6.44, ph_offset=0.6)
-    meg_e = dysim.Megastructure(215.032/40, True, 0.0091*3, ecc=0, o_vel=5.48, ph_offset=0.5)
-    meg_ms = dysim.Megastructure(326.84/40, True, 0.005*3, ecc=0, o_vel=4.42, ph_offset=0.4)
-    meg_jp = dysim.Megastructure(1118.17/40, True, 0.102*3, ecc=0, o_vel=2.41, ph_offset=0.3)
-    meg_st = dysim.Megastructure(2051.4/40, True, 0.086*3, ecc=0, o_vel=1.78, ph_offset=0.2)
-    meg_ur = dysim.Megastructure(4128.61/40, True, 0.036*3, ecc=0, o_vel=1.25, ph_offset=0.1)
-    meg_np = dysim.Megastructure(6450.9/40, True, 0.035*3, ecc=0, o_vel=1)
+    sim = dysim.Simulator(1, 60000, 8000, np.pi, limb_u1=0, limb_u2=0)
+    meg_mc = dysim.Megastructure(83.86, True, 0.0035, ecc=0, o_vel=8.82, ph_offset=0.7)
+    meg_vs = dysim.Megastructure(154.82, True, 0.0086, ecc=0, o_vel=6.44, ph_offset=0.6)
+    meg_e = dysim.Megastructure(215.032, True, 0.0091, ecc=0, o_vel=5.48, ph_offset=0.5)
+    meg_ms = dysim.Megastructure(326.84, True, 0.005, ecc=0, o_vel=4.42, ph_offset=0.4)
+    meg_jp = dysim.Megastructure(1118.17, True, 0.102, ecc=0, o_vel=2.41, ph_offset=0.3)
+    meg_st = dysim.Megastructure(2051.4, True, 0.086, ecc=0, o_vel=1.78, ph_offset=0.2)
+    meg_ur = dysim.Megastructure(4128.61, True, 0.036, ecc=0, o_vel=1.25, ph_offset=0.1)
+    meg_np = dysim.Megastructure(6450.9, True, 0.035, ecc=0, o_vel=1)
     sim.add_megs(meg_mc)
     sim.add_megs(meg_vs)
     sim.add_megs(meg_e)
@@ -167,14 +170,14 @@ def twoD_vs_threeD():
     # start 4 worker processes
     with Pool(processes=40) as pool:
         lc2dsum = np.asarray(pool.map(test_multi_loops_2d, range(120)))
-        lc2d = np.mean(lc2dsum, axis = 0)
+        lc2d = np.mean(lc2dsum, axis = 0)+np.flip(np.mean(lc2dsum, axis = 0))
         lc2dstd = np.sqrt(np.mean((lc2dsum-lc2d)**2, axis=0))
         print("--- %s min ---" % ((time.time() - start_time)/60))
 
         lc3dsum = np.asarray(pool.map(test_multi_loops_3d, range(120)))
         print("--- %s min ---" % ((time.time() - start_time)/60))
 
-        lc3d = np.mean(lc3dsum, axis = 0)
+        lc3d = np.mean(lc3dsum, axis = 0)+np.flip(np.mean(lc3dsum, axis = 0))
         lc3dstd = np.sqrt(np.mean((lc3dsum-lc3d)**2, axis=0))
 
         mn = (np.asarray(lc3d-lc2d)**2).sum()/len(lc3d)
@@ -184,7 +187,7 @@ def twoD_vs_threeD():
         fig, ax = plt.subplots(2,1, figsize = (7,10), sharex=True)
 
     frm = np.linspace(-fl,fl, len(lc3d))
-    print(fl)
+    print("n",fl)
     #model = new_plar(frm/np.pi,0.01, 0,0,2,0)+1
     ax[0].plot(frm,lc2d,label = '2d')
     ax[0].plot(frm, lc3d, label = '3d')
@@ -200,11 +203,11 @@ def twoD_vs_threeD():
     ax[1].set_title('Residual')
     ax[1].legend()
     plt.suptitle('2D vs 3D transiting objects')
-    df = pd.DataFrame(zip(frm, lc2d, lc2dstd, lc3d, lc3dstd), columns=['frame','2d','2dstd','3d','3dstd'])
-    df.to_csv('2d3d_811.csv', index='False', sep=',')
+    # df = pd.DataFrame(zip(frm, lc2d, lc2dstd, lc3d, lc3dstd), columns=['frame','2d','2dstd','3d','3dstd'])
+    # df.to_csv('2d3d_811.csv', index='False', sep=',')
     #np.savetxt('2d3d_0.1R_circ.csv', np.transpose(np.array([frm, lc2d, lc2dstd, lc3d, lc3dstd])),delimiter=',', header='frame, 2d, 2dstd, 3d, 3dstd')
-    #plt.savefig('2d3d_811.png')
-    #plt.show()
+    plt.savefig('1temp.png')
+    plt.show()
 
 def multishape():
     global fl
@@ -268,9 +271,9 @@ def solarsim():
     ax.set_title("$R_{pl}$ = 0.1 $R_{st}$, Orbit: = 2 $R_{st}$, u1: 0.6, u2:0.0, e: 0.0")
     plt.suptitle('2D vs 3D transiting objects')
     df = pd.DataFrame(zip(frm, lc2d, lc2dstd), columns=['frame','flux', 'std'])
-    df.to_csv('solarsim2.csv', index='False', sep=',')
+    df.to_csv('solarsim.csv', index='False', sep=',')
     #np.savetxt('2d3d_0.1R_circ.csv', np.transpose(np.array([frm, lc2d, lc2dstd, lc3d, lc3dstd])),delimiter=',', header='frame, 2d, 2dstd, 3d, 3dstd')
-    plt.savefig('solarsim2.png')
+    plt.savefig('solarsim.png')
     #plt.show()
 # df = pd.read_csv('811_fit.csv')
 # ph = np.array(df['phase'])
@@ -304,4 +307,4 @@ def solarsim():
 # # print(np.mean((fluxfit-flux_raw)**2/noise**2))
 # plt.savefig('temp.png')
 
-solarsim()
+twoD_vs_threeD()

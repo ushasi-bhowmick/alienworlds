@@ -269,8 +269,7 @@ class Simulator:
         """
 
         Rorb=[meg.Rorbit for meg in self.megs]
-        n = np.floor(np.pi*max(Rorb)/(2*self.Rstar))
-        self.frame_length = np.pi/n
+        self.frame_length = 2*np.arctan((self.Rstar)/max(Rorb))
         self.frames = self.frame_length*np.linspace(-1, 1, self.frame_no)
         #print("Frame Length:"+str(n))
 
