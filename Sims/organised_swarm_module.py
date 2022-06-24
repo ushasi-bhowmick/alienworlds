@@ -1,4 +1,5 @@
 import random
+import h5py
 #from turtle import color, pos
 import numpy as np
 import matplotlib.pyplot as plt
@@ -79,7 +80,7 @@ def plot_shape(shape):
     fig, ax = plt.subplots(1,1, figsize=(10,10))
     ax.set_aspect('equal', adjustable='box')
     th = np.linspace(0,2*np.pi,200)
-    print(phi)
+    #print(phi)
     ax.fill(Rstar*np.cos(th), Rstar*np.sin(th), color='yellow',zorder=1)
     for el in shape:
         i=el[0]
@@ -96,44 +97,155 @@ def plot_shape(shape):
         meg.Plcoords=meg.rotate([1,0,0],-j*phi)
         meg.Plcoords=meg.rotate([0,1,0],i*phi)
         meg.Plcoords,C = meg.translate(0)
-        print(meg.Plcoords[:,0],meg.Plcoords[:,2])
         if(np.any(meg.Plcoords[:,2]<0)):
             ax.fill(meg.Plcoords[:,0],meg.Plcoords[:,1],color='#000000', edgecolor='gray', alpha=0.8, zorder=0)
         else:
             ax.fill(meg.Plcoords[:,0],meg.Plcoords[:,1],color='#000000', edgecolor='gray', alpha=0.8, zorder=2)
-    plt.show()
+    # plt.show()
         
+#just adding a function to plot a large number of shapes together, so that we can look at them more easily
+#later
+def plot_shapes(shapes, numx, numy):
+    fig, axs = plt.subplots(numx, numy, figsize=(numy*2,numx*2))
+    th = np.linspace(0,2*np.pi,200)
+    #print(phi)
+    for shape, ax in zip(shapes, axs.ravel()):
+        ax.tick_params(left = False, right = False , labelleft = False ,labelbottom = False, bottom = False)
+        ax.set_aspect('equal', adjustable='box')
+        ax.fill(Rstar*np.cos(th), Rstar*np.sin(th), color='yellow',zorder=1)
+        for el in shape:
+            i=el[0]
+            j=el[1]
+            ang1 = j*phi
+            ang2 = j*phi
+            if(j*phi+phi/2 > np.pi/2): ang1 = np.pi/2 - phi/2
+            elif(j*phi-phi/2 < -np.pi/2): ang2 = np.pi/2 + phi/2
+            a1=2*np.pi*Rorb*np.cos(ang1+phi/2)/n
+            a2=2*np.pi*Rorb*np.cos(ang2-phi/2)/n
+            a=2*np.pi*Rorb*np.cos(j*phi)/n
+            coords=np.array([[a1/2,a/2,0],[-a1/2,a/2,0],[-a2/2,-a/2,0],[a2/2,-a/2,0]])
+            meg = dy.Megastructure(Rorb*np.cos(j*phi), False, isrot=True,elevation=Rorb*np.sin(j*phi), Plcoords=coords, ph_offset=i*phi)
+            meg.Plcoords=meg.rotate([1,0,0],-j*phi)
+            meg.Plcoords=meg.rotate([0,1,0],i*phi)
+            meg.Plcoords,C = meg.translate(0)
+            if(np.any(meg.Plcoords[:,2]<0)):
+                ax.fill(meg.Plcoords[:,0],meg.Plcoords[:,1],color='#000000', edgecolor='gray', alpha=0.8, zorder=0)
+            else:
+                ax.fill(meg.Plcoords[:,0],meg.Plcoords[:,1],color='#000000', edgecolor='gray', alpha=0.8, zorder=2)
+
 #now we need to do something about the degeneracies.
 def translate_or_flip(shape, nextsh, possibilities):
     xmax = max(possibilities[:,0])
     xmin = min(possibilities[:,0])
     ymin = min(possibilities[:,1])
     ymax = max(possibilities[:,1])
-    print(xmax, ymax, xmin, ymin)
 
     shapemaxx=max(shape[:,0])
-    shapeminx=min(shape[:,1])
+    shapeminx=min(shape[:,0])
 
     #identical from different seeds
-    if((shape==nextsh).all()): return(1)
+    # print(shape, nextsh)
+    if(len(shape)!=len(nextsh)): return(0)
+    if(np.any([(shape==el).all(axis=1) for el in nextsh], axis=1).all()): return(1)
+    
+    #setting range... still some fixes here
+    rng = shapemaxx-shapeminx
+    if((rng)>len(shape)): rng = xmax+1 - rng
 
     #translate along x
-    for i in range(0,shapemaxx-shapeminx,1):
+    for i in range(-rng,rng+1,1):
         newshape=shape+[i,0]
+        #print(newshape, shape)
         if(np.any(newshape[:,0]>xmax)):
-            newshape[np.where(newshape>xmax)[0],0] = newshape[np.where(newshape>xmax)[0],0] - xmax
+            newshape[np.where(newshape>xmax)[0][0],0] = newshape[np.where(newshape>xmax)[0][0],0] - xmax -1
         if(np.any(newshape[:,0]<xmin)):
-            newshape[np.where(newshape<xmin)[0],0] = newshape[np.where(newshape>xmax)[0],0] + xmax
-        if((newshape==nextsh).all()): return(1)
+            newshape[np.where(newshape<xmin)[0][0],0] = newshape[np.where(newshape<xmin)[0][0],0] + xmax +1
+
+        # print(newshape, nextsh)
+        # print(np.any([(newshape==el).all(axis=1) for el in nextsh], axis=1).all())
+        if(np.any([(newshape==el).all(axis=1) for el in nextsh], axis=1).all()): return(1)
 
     #flip along y
-    newshape=np.array([[el[0], -el[1]] for el in shape])
-    print(shape, newshape)
-    if((newshape==nextsh).all()): return(1) 
+    shape2=np.array([[el[0], -el[1]] for el in shape])
+    
+    
+    if(np.any([(shape2==el).all(axis=1) for el in nextsh], axis=1).all()): return(1)
+
+    for i in range(-rng,rng+1,1):
+        newshape=shape2+[i,0]
+        #print(newshape, shape)
+        if(np.any(newshape[:,0]>xmax)):
+            newshape[np.where(newshape>xmax)[0][0],0] = newshape[np.where(newshape>xmax)[0][0],0] - xmax -1
+        if(np.any(newshape[:,0]<xmin)):
+            newshape[np.where(newshape<xmin)[0][0],0] = newshape[np.where(newshape<xmin)[0][0],0] + xmax +1
+
+        # print(newshape, nextsh)
+        # print(np.any([(newshape==el).all(axis=1) for el in nextsh], axis=1).all())
+        if(np.any([(newshape==el).all(axis=1) for el in nextsh], axis=1).all()): return(1)
+
     else: return 0
 
 
+#we need a function to add a layer of panels over the original layers
+def layers_over_shape(shape,possibilities):
+    xmax = max(possibilities[:,0])
+    xmin = min(possibilities[:,0])
+    ymin = min(possibilities[:,1])
+    ymax = max(possibilities[:,1])
+    ind = np.array([np.where((possibilities == np.array(el)).all(axis=1))[0] for el in shape]).reshape(-1)
+    possibilities_left=np.delete(possibilities,ind, axis=0)
+    count=0
+    layers=[]
+    for el in possibilities_left:
+        if(np.any((np.array(shape)==np.array([1,0])+el).all(axis=1))):  layers.append(el)
+        elif(np.any((np.array(shape)==np.array([-1,0])+el).all(axis=1))): layers.append(el)
+        elif(np.any((np.array(shape)==np.array([0,1])+el).all(axis=1))): layers.append(el)
+        elif(np.any((np.array(shape)==np.array([0,-1])+el).all(axis=1))): layers.append(el)
+        elif((np.array([1,0])+el)[0]>xmax or (np.array([-1,0])+el)[0]<0):
+            if(np.any((np.array(shape)==np.array([-xmax,0])+el).all(axis=1))): layers.append(el) 
+            if(np.any((np.array(shape)==np.array([xmax,0])+el).all(axis=1))): layers.append(el)
+    return(np.array(layers))
 
+
+
+#here's a rerun of the simulation... testing for a simple case... we'll start off with one panel... then
+#move on to the next iteration. each iteration is half the number of panels that would cover the entire 
+#shape with one additional layer of panels.
+def run_shape_generator(iterations):
+    f1 = h5py.File("data.hdf5", "w")
+    pos = list_of_places()
+    #how many panels to add next?
+    i=0
+    directory_of_shapes_init= [[[0,0]]]
+    while(i<iterations):
+        i+=1
+        directory_of_shapes = list(np.copy(directory_of_shapes_init))
+        for strt in directory_of_shapes_init:
+            
+            sum_of_layers = layers_over_shape(strt, pos)
+            for el in sum_of_layers:
+                newshape = np.array(np.append(strt,np.array([el]), axis=0))
+                degeneracy = [translate_or_flip(one, newshape, pos) for one in directory_of_shapes]
+                if(np.any(np.array(degeneracy))): 
+                    continue
+                else: 
+                    # print(newshape,np.array(directory_of_shapes, dtype='object'), degeneracy)
+                    directory_of_shapes.append(newshape)
+        directory_of_shapes_init = directory_of_shapes
+    
+    print(len(directory_of_shapes_init))
+
+    i=0
+    for el in directory_of_shapes_init:
+        dset1 = f1.create_dataset("sh_"+str(i), np.array(el).shape, dtype='i', data=el)
+        i+=1
+        #print(el)
+    f1.close()
+
+    plot_shapes(directory_of_shapes_init,6,7)
+    plt.savefig('fig.png')
+    return(directory_of_shapes)
+   
 #function to run the simulation for an arbitrary shape
 def lc_of_shape(stash):
     sim1 = dy.Simulator(Rstar, 5000, no_pt, np.pi, limb_u1=0.0)
@@ -165,12 +277,15 @@ def lc_of_shape(stash):
 
 
 #--------------------------------------------------------------------
-pos = list_of_places()
-sh = one_arbitrary_shape(np.array([[0,0],[1,0],[0,-1]]),8,pos)
-x = translate_or_flip(np.array([[0,0],[1,0],[0,-1]]), np.array([[0,0],[1,0],[0,1]]),pos)
-print(x)
-plot_shape([[0,0],[1,0],[0,-1]])
-plot_shape([[0,0],[1,0],[0,1]])
+# pos = list_of_places()
+# sh = one_arbitrary_shape(np.array([[0,0],[1,0],[0,-1]]),8,pos)
+# print('layers',layers_over_shape(np.array([[59,0],[59,-1]]),pos))
+# x = translate_or_flip(np.array([[0,0],[0,1],[1,0]]), np.array([[0,0],[1,0],[0,-1]]),pos)
+# print(x)
+# plot_shape([[59,0],[59,-1]])
+# # plot_shape([[0,0],[1,0],[0,1]])
+
+run_shape_generator(3)
 
 #--------------------------------------------------------------------
 
