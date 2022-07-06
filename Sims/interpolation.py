@@ -10,8 +10,37 @@ import time
 
 #we need to change some strategies, because its too slow
 #Im gonna try scipy
+"""GRID INTERPOLATION MODULE
+Routines for interpolation of the grid of 2D Space Mirrors... stored in Computation Directory.
+
+EXAMPLE:
+
+    ::points, vals, phases = load_grids()
+
+    ::flux = lc_interpolate_v2(ph, p, rorb, imp, u1,u2,points, vals, phases) 
+
+DESCRIPTION:
+    load_grids - To be initialized at the start of the code to load the grid to RAM. Makes it 
+    easier and faster to interpolate later on.
+
+    lc_interpolate_v2 - Latest functional fastest interpolation routine. Used to return the lighcurve
+    of the spcified rpl, rorb, u1, u2, imp obtained via intrpolation.
+
+"""
 
 def load_grids():
+    """Function to load the grid to memory. 
+    
+    Returns - 
+    points: refer to the nodes of the grid
+    vals: refer to the flux value evaluated at the nodes... read from computation directory
+    phases: refer to the x-axis, i.e the phase value at the nodes. Given in terms of pi. Read from 
+        computation directory
+
+    Note: A bit of a problem if you don't have enough memory to store the grid... in that case 
+    probably use v1 of lc interpolate but thats far far slower
+    
+    """
     #read all the data and store it in dataframes ... ig?
     df_master=[]
     rpl_arr=np.around(np.linspace(0.01,0.5, 10) ,2)
@@ -39,12 +68,8 @@ def load_grids():
         vals.append(net_r)
         phases.append(net_rph)
 
-
     #grid = np.meshgrid(*points)
-
-    print(np.array(vals).shape, np.array(phases).shape)
-    
-
+    print("Shape of Grid:", np.array(vals).shape, np.array(phases).shape)
     return(points,vals,phases)
 
 
@@ -133,8 +158,7 @@ def lc_read(rpl, rorb, b, u1, u2):
 
 def lc_interpolate(ph, rpl, rorb, b, u1, u2):
     phase_list, flux_list, parspace = lc_read(rpl, rorb, b, u1, u2)
-    
-    
+
     final_flux= np.transpose(flux_list)
 
     #print(parspace)
@@ -156,6 +180,25 @@ def lc_interpolate(ph, rpl, rorb, b, u1, u2):
     return(f(ph))
 
 def lc_interpolate_v2(ph, rpl, rorb, b, u1, u2, points, vals, phases):
+    """ Return the flux of a 2D space mirror of arbitrary dimensions in transit at arbitrary distances
+    from an arbitrarily limb-darkened star.
+
+    :param ph: phase array in terms of pi, where one orbital period corresponds to a 2*pi rotation
+    :param rpl: relative radius of the mirror w.r.t the star
+    :param rorb: relative distance of the mirror w.r.t the star
+    :param b: impact parameter - measure of the angle of inclination, given in terms of the relative
+        separation of the center of the star to the center of the planet w.r.t radius of the star, 
+        projected along the line of sight
+    :param u1: quadratic limb darkening coefficient 1
+    :param u2: quadratic limb darkening coefficient 2
+    :param points: grid nodes, obtained as output of load_grids()
+    :param vals: grid fluxes, obtained as output of load_grids()
+    :param phases: grid phases, obtained as output of load_grids()
+
+    Returns - 
+    fin_out: flux corresponding to the input phase.
+
+    """
     prpl, prorb, pb, pu1, pu2 = points
     
     # outt = [interpn((prorb,pb, pu1, pu2), np.array(vals)[i], [rorb,b,u1,u2])[0] for i in range(10)]
@@ -172,13 +215,12 @@ def lc_interpolate_v2(ph, rpl, rorb, b, u1, u2, points, vals, phases):
     return(fin_out)
 
 
+# ----------------------------------------------------------------------------
 # tic=time.time()
 
 # points, vals, phases = load_grids()
 # print("time:",time.time()-tic," s")
 # fig, ax = plt.subplots(2,1,figsize=(7,10))
-
-
 
 # df=pd.read_csv('2d3d_0.1R_limb_circ.csv')
 # ph=np.array(df['frame'])
@@ -229,3 +271,4 @@ def lc_interpolate_v2(ph, rpl, rorb, b, u1, u2, points, vals, phases):
 # lc = lc_interpolate(ph,0.12,2.47,0.201,0.3,0.201)
 # plt.plot(ph, lc)
 # plt.show()
+#--------------------------------------------------------------------------

@@ -10,6 +10,26 @@ from multiprocessing import Process, Pool
 
 start_time = time.time()
 
+"""DYSON SPHERE IN CONSTRUCTION
+This is a module that can generate all manner of possibilities that may arise during the construction 
+of a dyson sphere, panel by panel. When run to its full potential, this will lead to a set of more than
+a million possibilities... however this is stashed and replaced by a more convenient arbitrary shape 
+generator. Its still a very well written code.
+
+Here we define an 'n' value, which is the number of panels you want to put in one orbit around a star.
+This means that an n=10 means that one equator of the star takes 10 panels to cover it.
+
+Other parameters:
+    Rstar: Radius of the star... doesnt matter what you give it, as long as Rorb is given accordingly
+    Rorb: Radius of the orbit. Distance at which the swarm is built
+    no_pt: Number of frames that one revolution around the star would contain
+    res: Resolution of the Monte-Carlo Simulation
+    maxout: Number of iterations. If this is less than the no. of iterations needed to complete the 
+        sphere, then the animation stops early. Else the animation stops at the completiono of the 
+        sphere.
+
+"""
+
 #redo the animation frames coz this is slightly different...
 #we start by randomly placing panels on the dyson sphere
 n = 60
@@ -27,6 +47,10 @@ maxout = 11
 
 
 def list_of_places():
+    """An initializer function that generates an array containing the location of each panel of the completed
+    dyson sphere. A shape will be a subset of this list.
+    
+    """
     possibilities=[]
     for j in range(-int(n/4),int(n/4)+1):
         for i in range(0,n):
@@ -135,6 +159,17 @@ def plot_shapes(shapes, numx, numy):
 
 #now we need to do something about the degeneracies.
 def translate_or_flip(shape, nextsh, possibilities):
+    """ This is a degeneracy checking function that checks if two shapes are degenerate. Degenerate shapes
+    are those which are identical when translated along the x-axis, or flipped along the y-axis.
+
+    :param shape: One of the two shapes for which we need to check for degeneracies
+    :param nextsh: One of the two shapes for which we need to check for degeneracies
+    :param possibilities: wholesome array of possibilities returned from the list of places function
+
+    Returns -
+    1 if degenerate, 0 if non-degenerate.
+    
+    """
     xmax = max(possibilities[:,0])
     xmin = min(possibilities[:,0])
     ymin = min(possibilities[:,1])
@@ -209,9 +244,22 @@ def layers_over_shape(shape,possibilities):
 
 
 #here's a rerun of the simulation... testing for a simple case... we'll start off with one panel... then
-#move on to the next iteration. each iteration is half the number of panels that would cover the entire 
-#shape with one additional layer of panels.
+#move on to the next iteration. each iteration is one panel added to the preexisting shape. This is the 
+#least complex way to do this.
 def run_shape_generator(iterations):
+    """ This is the main running function, that generates(hopefully) all the possibilities that constitute
+    building a dyson sphere to completion. It takes in a number of iterations, and generate all distinct 
+    shapes from it. Degeneracies are removed. It returns the directory of shapes in the form of an array 
+    of shapes. Each shape is a specific list of possibilities from the 'list of places' array. The directory 
+    is also stored as 'data.hdf5', and a plot is made demonstrating the shapes.
+
+    :param iterations: This is the number of iterations the code will run for. Each iteration adds a panel
+    so 3 iterations means 4 panels.
+
+    Returns - 
+    Directory of shapes
+
+    """
     f1 = h5py.File("data.hdf5", "w")
     pos = list_of_places()
     #how many panels to add next?

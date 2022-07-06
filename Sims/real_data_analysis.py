@@ -9,6 +9,12 @@ from astropy.io import ascii
 import GetLightcurves as gc
 from transit import occultnonlin, occultquad
 
+"""FITTING RESIDUALS
+   This is a bit of an obsolete code... the functional version is moved to real_data_analysis.ipynb
+   Not deleting this coz I worked hard on it.
+
+"""
+
 entries = os.listdir('../../processed_directories/go_circles/fit_circles_rel/')
 rv_entry=ascii.read('../../Catalogs/robovetter_label.dat')
 rv_pl=np.array(rv_entry['tce_plnt_num'])
