@@ -569,7 +569,7 @@ def analyse_scaling_rorb():
 
 #--------------------------------------------------------------------------------
 
-analyse_scaling_rorb()
+# analyse_scaling_rorb()
 #shape_dictionary()
 
 # # accessing this
@@ -577,5 +577,8 @@ analyse_scaling_rorb()
 # for k1 in hf:
 #    n = np.array(hf.get(k1))
 #    print(k1)
+
+
+#code to run the bezier sims...
 
 #================================================================================
