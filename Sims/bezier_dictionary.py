@@ -11,6 +11,8 @@ from scipy.interpolate import interp1d
 from scipy.optimize import curve_fit
 from bezier import get_random_points, get_bezier_curve
 import h5py
+import warnings
+warnings.filterwarnings("ignore")
 
 start_time = time.time()
 bez_shape=[]
@@ -64,7 +66,7 @@ def bezier_sim(x):
     global Rorb
     global res
     np.random.seed(3456*x)
-    sim_2d = dysim.Simulator (1, res, 600, limb_u1=0.0, limb_u2=0.0)
+    sim_2d = dysim.Simulator (1, res, 500, limb_u1=0.0, limb_u2=0.0)
     meg_2d = dysim.Megastructure(Rorb, iscircle=True, Rcircle=0.3, isrot=True)
     # meg_2d.Plcoords = np.array(bez_shape)
     sim_2d.add_megs(meg_2d)
@@ -130,11 +132,9 @@ def run_one_bezier_sim(shapes, orbit, resolution):
     res = resolution
     bez_shape = shapes
     Rorb = orbit
-    print(bez_shape[0])
-    with Pool(processes=4) as pool:
-        output = np.asarray(pool.map(bezier_sim, range(16)))
+    with Pool(processes=40) as pool:
+        output = np.asarray(pool.map(bezier_sim, range(80)))
         lc2dsum=[np.array(el[0]) for el in output]
-        print(np.array(lc2dsum).shape)
         lc2d = np.mean(lc2dsum, axis = 0)
         fl = np.mean(np.array([el[1] for el in output]))
         lc2dstd = np.sqrt(np.mean((lc2dsum-lc2d)**2, axis=0))
@@ -146,27 +146,32 @@ def run_one_bezier_sim(shapes, orbit, resolution):
 #code run
 shape_entries = os.listdir('../Shape_Directory/shape_list/')
 
-for entry in shape_entries[:1]:
-    hf = h5py.File("../Shape_Directory/shape_list/"+entry, 'r')
-    f1 = h5py.File("../Shape_Directory/shape_lc/"+entry, "w")
-    fig, ax = plt.subplots(1,1,figsize=(10,10))
-    i=int(0)
-    print(len(hf))
-    for k1 in hf:
-        i+=1
-        if(i%10==0):
-            plt.savefig("../Shape_Directory/shape_lc/"+entry[:-5]+'_'+str(i)+'.png')
-            plt.close()
-            fig, ax = plt.subplots(1,1,figsize=(10,10))
-        n = np.array(hf.get(k1))
-        print(k1, n.shape)
-        lc, lcstd, frm = run_one_bezier_sim(n, 2, 2000)
-        dset1 = f1.create_dataset(str(k1)+'_sh', np.array(n).shape, dtype='f', data=n)
-        dset2 = f1.create_dataset(str(k1)+'_frm', np.array(frm).shape, dtype='f', data=frm)
-        dset3 = f1.create_dataset(str(k1)+'_lc', np.array(lc).shape, dtype='f', data=lc)
-        ax.plot(frm, lc)
+
+# for entry in [shape_entries[7],shape_entries[8],shape_entries[9],shape_entries[1]]:
+#     print(entry)
+#     hf = h5py.File("../Shape_Directory/shape_list/"+entry, 'r')
+#     f1 = h5py.File("../Shape_Directory/shape_lc/"+entry, "w")
+#     fig, ax = plt.subplots(1,1,figsize=(10,10))
+#     i=int(0)
+#     for k1 in hf:
+#         i+=1
+#         if(i%10==0):
+#             plt.savefig("../Shape_Directory/shape_lc/"+entry[:-5]+'_'+str(i)+'.png')
+#             plt.close()
+#             fig, ax = plt.subplots(1,1,figsize=(10,10))
+#         n = np.array(hf.get(k1))
+#         print(k1, n.shape)
+#         lc, lcstd, frm = run_one_bezier_sim(n, 2, 5000)
+#         dset1 = f1.create_dataset(str(k1)+'_sh', np.array(n).shape, dtype='f', data=n)
+#         dset2 = f1.create_dataset(str(k1)+'_frm', np.array(frm).shape, dtype='f', data=frm)
+#         dset3 = f1.create_dataset(str(k1)+'_lc', np.array(lc).shape, dtype='f', data=lc)
+#         ax.plot(frm, lc)
     
-    hf.close()
-    f1.close()
-    plt.savefig("../Shape_Directory/shape_lc/"+entry[:-5]+'_'+str(i)+'.png')
+#     hf.close()
+#     f1.close()
+#     plt.savefig("../Shape_Directory/shape_lc/"+entry[:-5]+'_'+str(i)+'.png')
     #plt.show()
+
+
+hf = h5py.File("../Shape_Directory/shape_lc/n_5.hdf5", 'r')
+print(len(hf), shape_entries)
