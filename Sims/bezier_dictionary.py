@@ -74,8 +74,8 @@ def bezier_sim(x):
     global res
     np.random.seed(3456*x)
     sim_2d = dysim.Simulator (1, res, 500, limb_u1=0.0, limb_u2=0.0)
-    meg_2d = dysim.Megastructure(Rorb, iscircle=True, Rcircle=0.3, isrot=True)
-    # meg_2d.Plcoords = np.array(bez_shape)
+    meg_2d = dysim.Megastructure(Rorb, isrot=True)
+    meg_2d.Plcoords = np.array(bez_shape)
     sim_2d.add_megs(meg_2d)
     sim_2d.set_frame_length()
     sim_2d.simulate_transit()
@@ -193,25 +193,30 @@ area_theorum()
 
 # shape_entries = os.listdir('../Shape_Directory/shape_list/')
 
-# for entry in [shape_entries[7],shape_entries[8],shape_entries[9],shape_entries[1]]:
-#     print(entry)
-#     hf = h5py.File("../Shape_Directory/shape_list/"+entry, 'r')
-#     f1 = h5py.File("../Shape_Directory/shape_lc/"+entry, "w")
-#     fig, ax = plt.subplots(1,1,figsize=(10,10))
-#     i=int(0)
-#     for k1 in hf:
-#         i+=1
-#         if(i%10==0):
-#             plt.savefig("../Shape_Directory/shape_lc/"+entry[:-5]+'_'+str(i)+'.png')
-#             plt.close()
-#             fig, ax = plt.subplots(1,1,figsize=(10,10))
-#         n = np.array(hf.get(k1))
-#         print(k1, n.shape)
-#         lc, lcstd, frm = run_one_bezier_sim(n, 2, 5000)
-#         dset1 = f1.create_dataset(str(k1)+'_sh', np.array(n).shape, dtype='f', data=n)
-#         dset2 = f1.create_dataset(str(k1)+'_frm', np.array(frm).shape, dtype='f', data=frm)
-#         dset3 = f1.create_dataset(str(k1)+'_lc', np.array(lc).shape, dtype='f', data=lc)
-#         ax.plot(frm, lc)
+for entry in shape_entries[8:]:
+    print(entry)
+    hf = h5py.File("../Shape_Directory/shape_list/"+entry, 'r')
+    # f1 = h5py.File("../Shape_Directory/shape_lc/"+entry, "a")
+    fig, ax = plt.subplots(1,1,figsize=(10,10))
+    i=int(0)
+    for k1 in hf:
+        # if(i<400): 
+        #     i+=1
+        #     continue
+        f1 = h5py.File("../Shape_Directory/shape_lc/"+entry, "a")
+        i+=1
+        if(i%10==0):
+            plt.savefig("../Shape_Directory/shape_lc/"+entry[:-5]+'_'+str(i)+'.png')
+            plt.close()
+            fig, ax = plt.subplots(1,1,figsize=(10,10))
+        n = np.array(hf.get(k1))
+        print(k1, n.shape)
+        lc, lcstd, frm = run_one_bezier_sim(n, 2, 5000)
+        dset1 = f1.create_dataset(str(k1)+'_sh', np.array(n).shape, dtype='f', data=n)
+        dset2 = f1.create_dataset(str(k1)+'_frm', np.array(frm).shape, dtype='f', data=frm)
+        dset3 = f1.create_dataset(str(k1)+'_lc', np.array(lc).shape, dtype='f', data=lc)
+        ax.plot(frm, lc)
+        f1.close()
     
 #     hf.close()
 #     f1.close()
