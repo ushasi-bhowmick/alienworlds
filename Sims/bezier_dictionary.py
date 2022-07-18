@@ -14,6 +14,13 @@ import h5py
 import warnings
 warnings.filterwarnings("ignore")
 
+"""LIBRARY OF ARBITRARY SHAPES: THE BEZIER WAY
+In this module we use bezier curves to generate a bunch of arbitrary shapes. These shapes 
+will be utilized to obtain corresponding LC. Hopefully we will be able to train a NN to reverse-
+engineer this. (I'm not too optimistic)
+
+"""
+
 start_time = time.time()
 bez_shape=[]
 ca2=['#432371', '#714674', '#9F6976', '#CC8B79', '#FAAE7B']
@@ -98,30 +105,6 @@ def run_bezier_sim(shapes_list, orbit_list, resolution):
         frm = np.linspace(-fl,fl, len(lc2d))
         frmlist.append(frm)
 
-        # sim_2d = dysim.Simulator (1, 1000, 700, limb_u1=0.0, limb_u2=0.0)
-        # meg_2d = dysim.Megastructure(2, isrot=True)
-        # meg_2d.Plcoords = np.array(bez_shape)
-        # sim_2d.add_megs(meg_2d)
-        # # sim_2d.set_frame_length()
-        # sim_2d.simulate_transit()
-        # TA = dysim.Transit_Animate(sim_2d.road, sim_2d.megs, lc2d, sim_2d.frames)
-        # TA.go(ifsave=True,filepath='testbezier.gif')
-
-        # plt.style.use('seaborn-bright')
-        # fig, ax = plt.subplots(1,1, figsize = (20,7), sharex=True)
-
-        # frm = np.linspace(-fl,fl, len(lc2d))
-        # ax.plot(frm,lc2d,label = '2d')
-        # ax.legend()
-        # ax.set_ylabel('Flux')
-        # ax.set_title("Bezier Transit")
-        # plt.suptitle('2D vs 3D transiting objects')
-
-        # df = pd.DataFrame(zip(frm, lc2d, lc2dstd), columns=['frame','flux', 'std'])
-        # df.to_csv('solarsim.csv', index='False', sep=',')
-        #np.savetxt('2d3d_0.1R_circ.csv', np.transpose(np.array([frm, lc2d, lc2dstd, lc3d, lc3dstd])),delimiter=',', header='frame, 2d, 2dstd, 3d, 3dstd')
-        # plt.savefig('solarsim.png')
-
     return(lc_list, lc_std_list, frmlist)
 
 def run_one_bezier_sim(shapes, orbit, resolution):
@@ -142,10 +125,73 @@ def run_one_bezier_sim(shapes, orbit, resolution):
     frm = np.linspace(-fl,fl, len(lc2d))
     return(lc2d, lc2dstd, frm)
 
+def analyse_bezier_results():
+    """ Ran the above simulations and hope to see if any of the bezier shapes made
+    Any damn difference. I don't think so.  
 
-#code run
-shape_entries = os.listdir('../Shape_Directory/shape_list/')
+    And it didn't work.
 
+    """
+
+    hf = h5py.File("../Shape_Directory/shape_lc/n_14.hdf5", 'r')
+    i = 0
+    fig, ax = plt.subplots(2,1, figsize=(10,10))
+    old=[]
+    for key in hf:
+        if(i==50): break
+        if(key.find('lc')>0):
+            i+=1
+            n = np.array(hf.get(key))
+            ax[0].plot(n, label=key)
+            if(len(old)>0): 
+                ax[1].plot(old-n)
+                old = n
+            else: old = n
+    ax[0].legend()
+    plt.show()
+
+# To prove: A closed shape of a particular surface area gives the same LC... regardless of the
+# boundary. 
+def area_theorum():
+    hf = h5py.File("../Shape_Directory/shape_list/n_5.hdf5", 'r')
+    # print([k for k in hf])
+    np.random.seed(10)
+    simtri = dysim.Simulator(1, 5000, 600)
+    simsq = dysim.Simulator(1, 5000, 600)
+    # megtri = dysim.Megastructure(2, isrot=True)
+    # megtri.regular_polygons_2d(0.3,3)
+    # megrect = dysim.Megastructure(2, isrot=True, Plcoords=[[-0.171, -0.171, 0],[-0.171, 0.171, 0], [0.171, 0.171, 0], [0.171, -0.171, 0]])
+
+    megtri = dysim.Megastructure(2, isrot=True, Plcoords=np.array(hf.get('rad_1.0_edg_3.0_6')))
+    megrect = dysim.Megastructure(2, isrot=True, Plcoords=np.array(hf.get('rad_1.0_edg_3.0_7')))
+    simtri.add_megs(megtri)
+    simsq.add_megs(megrect)
+    simtri.set_frame_length()
+    simsq.set_frame_length()
+
+    lctrisum = []
+    lcrectsum = []
+    for i in range(10):
+        simsq.initialize()
+        simtri.initialize()
+        simsq.simulate_transit()
+        simtri.simulate_transit()
+        lctrisum.append(simtri.lc)
+        lcrectsum.append(simsq.lc)
+
+    lctri = np.mean(lctrisum, axis=0)
+    lcrect = np.mean(lcrectsum, axis=0)
+
+    plt.plot(simsq.frames, lcrect)
+    plt.plot(simtri.frames, lctri)
+    plt.show()
+
+
+
+area_theorum()
+#----------------------------------------------------------------------------
+
+# shape_entries = os.listdir('../Shape_Directory/shape_list/')
 
 # for entry in [shape_entries[7],shape_entries[8],shape_entries[9],shape_entries[1]]:
 #     print(entry)
@@ -170,8 +216,13 @@ shape_entries = os.listdir('../Shape_Directory/shape_list/')
 #     hf.close()
 #     f1.close()
 #     plt.savefig("../Shape_Directory/shape_lc/"+entry[:-5]+'_'+str(i)+'.png')
-    #plt.show()
+#     # plt.show()
 
+#----------------------------------------------------------------------------------------
 
-hf = h5py.File("../Shape_Directory/shape_lc/n_5.hdf5", 'r')
-print(len(hf), shape_entries)
+# #Diagnostic section
+# shape_entries = os.listdir('../Shape_Directory/shape_list/')
+# hf = h5py.File("../Shape_Directory/shape_lc/n_5.hdf5", 'r')
+# print(len(hf), shape_entries)
+
+#----------------------------------------------------------------------------------------
