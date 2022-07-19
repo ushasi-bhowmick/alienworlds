@@ -9,8 +9,30 @@ from multiprocessing import Process, Pool
 
 start_time = time.time()
 
-#redo the animation frames coz this is slightly different...
-#we start by randomly placing panels on the dyson sphere
+"""DYSON SPHERE IN CONSTRUCTION
+This is my ultimate animation of the semester. Running this code constructs a dyson sphere, panel
+by panel, and calculates the LC for this scenario at each step. The resulting animation shows the
+LC where the transits become more and more prominent, and the flux dips gradually. ONce the sphere
+is completed, no more dip in flux is observed. Note that in every iteration, the number of panels 
+doubles, because thats the rate an alien civilization must target if they want to finish building
+the dyson sphere in reasonable time.
+
+The way to initialize this animation is slightly odd. Here we define an 'n' value, which is the 
+number of panels you want to put in one orbit around a star. This means that an n=10 means that 
+one equator of the star takes 10 panels to cover it.
+
+Other parameters:
+    Rstar: Radius of the star... doesnt matter what you give it, as long as Rorb is given accordingly
+    Rorb: Radius of the orbit. Distance at which the swarm is built
+    no_pt: Number of frames that one revolution around the star would contain
+    res: Resolution of the Monte-Carlo Simulation
+    maxout: Number of iterations. If this is less than the no. of iterations needed to complete the 
+        sphere, then the animation stops early. Else the animation stops at the completiono of the 
+        sphere.
+
+"""
+
+#Initialize the swarm
 n = 10
 phi = 2*np.pi/n
 
@@ -18,6 +40,7 @@ Rstar = 100
 Rorb =200
 a = 2*np.pi*Rorb/n
 no_pt = 200
+res=5000
 maxout = 11
 
 
@@ -46,7 +69,7 @@ ymax = max(possibilities[:,1])
 sum_road = []
 sum_lc = []
 
-sim1 = dy.Simulator(Rstar, 5000, no_pt, np.pi, limb_u1=0.0)
+sim1 = dy.Simulator(Rstar, res, no_pt, np.pi, limb_u1=0.0)
 stash=np.array([[0,0]])
 for it in range(0,maxout):
     sim1.megs=[]

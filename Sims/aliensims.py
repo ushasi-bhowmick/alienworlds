@@ -267,7 +267,11 @@ class Simulator:
 
         """Let us decide an optimum frame length for the code!
         """
-
+        
+        if(len(self.megs)==0):
+            print('add a megastructure')
+            self.frame_length = np.pi/2
+            return 0
         Rorb=[meg.Rorbit for meg in self.megs]
         self.frame_length = 2*np.arctan((self.Rstar)/max(Rorb))
         self.frames = self.frame_length*np.linspace(-1, 1, self.frame_no)
