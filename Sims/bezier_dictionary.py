@@ -127,9 +127,7 @@ def run_one_bezier_sim(shapes, orbit, resolution):
 
 def analyse_bezier_results():
     """ Ran the above simulations and hope to see if any of the bezier shapes made
-    Any damn difference. I don't think so.  
-
-    And it didn't work.
+    Any damn difference. 
 
     """
 
@@ -186,42 +184,73 @@ def area_theorum():
     plt.plot(simtri.frames, lctri)
     plt.show()
 
+def plot_sims(no, file):
+    """ The earlier plots were a mistake, forgot to uncomment something... now 
+    we're gonna just plot some results... to show sir
+    
+    """
+    ca2=['#432371', '#714674', '#9F6976', '#CC8B79', '#FAAE7B']
+
+    hf = h5py.File("../Shape_Directory/shape_lc/n_"+str(file)+".hdf5", 'r')
+    i = 0
+    fig, ax = plt.subplots(no,2, figsize=(10,12), gridspec_kw={ 'width_ratios': [3,1],
+        'wspace': 0.01,'hspace': 0.1})
+    
+    for key in hf:
+        if(key.find('sh')>0): 
+            ax[i][1].set_aspect('equal', adjustable='box')
+            sh = np.array(hf.get(key))
+            ax[i][1].fill(sh[:,0], sh[:,1],color=ca2[i%5])
+            frm = np.array(hf.get(key[:-2]+'frm'))
+            lc =  np.array(hf.get(key[:-2]+'lc'))
+            ax[i][0].plot(frm, lc, color=ca2[4 - i%5])
+            ax[i][1].tick_params(left = False, right = False , labelleft = False ,labelbottom = False, bottom = False)
+            if(i<no-1): ax[i][0].tick_params(labelbottom = False, bottom = False)
+            ax[i][1].set_xlim(-0.5,0.5)
+            ax[i][1].set_ylim(-0.5,0.5)
+            ax[i][0].set_ylabel('Flux', size=13)
+
+            i+=1
+        if(i==no): break
+    # ax[0].legend()
+    ax[no-1][0].set_xlabel('Phase', size=13)
+    plt.suptitle('Simulation: n = '+str(file), size=15)
+    plt.tight_layout()
+    plt.savefig("sample_from_n"+str(file)+".png")
+    plt.show()
 
 
-area_theorum()
+plot_sims(5, 14)
+
 #----------------------------------------------------------------------------
 
 # shape_entries = os.listdir('../Shape_Directory/shape_list/')
 
-for entry in shape_entries[8:]:
-    print(entry)
-    hf = h5py.File("../Shape_Directory/shape_list/"+entry, 'r')
-    # f1 = h5py.File("../Shape_Directory/shape_lc/"+entry, "a")
-    fig, ax = plt.subplots(1,1,figsize=(10,10))
-    i=int(0)
-    for k1 in hf:
-        # if(i<400): 
-        #     i+=1
-        #     continue
-        f1 = h5py.File("../Shape_Directory/shape_lc/"+entry, "a")
-        i+=1
-        if(i%10==0):
-            plt.savefig("../Shape_Directory/shape_lc/"+entry[:-5]+'_'+str(i)+'.png')
-            plt.close()
-            fig, ax = plt.subplots(1,1,figsize=(10,10))
-        n = np.array(hf.get(k1))
-        print(k1, n.shape)
-        lc, lcstd, frm = run_one_bezier_sim(n, 2, 5000)
-        dset1 = f1.create_dataset(str(k1)+'_sh', np.array(n).shape, dtype='f', data=n)
-        dset2 = f1.create_dataset(str(k1)+'_frm', np.array(frm).shape, dtype='f', data=frm)
-        dset3 = f1.create_dataset(str(k1)+'_lc', np.array(lc).shape, dtype='f', data=lc)
-        ax.plot(frm, lc)
-        f1.close()
-    
-#     hf.close()
-#     f1.close()
-#     plt.savefig("../Shape_Directory/shape_lc/"+entry[:-5]+'_'+str(i)+'.png')
-#     # plt.show()
+# for entry in shape_entries[8:]:
+#     print(entry)
+#     hf = h5py.File("../Shape_Directory/shape_list/"+entry, 'r')
+#     # f1 = h5py.File("../Shape_Directory/shape_lc/"+entry, "a")
+#     fig, ax = plt.subplots(1,1,figsize=(10,10))
+#     i=int(0)
+#     for k1 in hf:
+#         # if(i<400): 
+#         #     i+=1
+#         #     continue
+#         f1 = h5py.File("../Shape_Directory/shape_lc/"+entry, "a")
+#         i+=1
+#         if(i%10==0):
+#             plt.savefig("../Shape_Directory/shape_lc/"+entry[:-5]+'_'+str(i)+'.png')
+#             plt.close()
+#             fig, ax = plt.subplots(1,1,figsize=(10,10))
+#         n = np.array(hf.get(k1))
+#         print(k1, n.shape)
+#         lc, lcstd, frm = run_one_bezier_sim(n, 2, 5000)
+#         dset1 = f1.create_dataset(str(k1)+'_sh', np.array(n).shape, dtype='f', data=n)
+#         dset2 = f1.create_dataset(str(k1)+'_frm', np.array(frm).shape, dtype='f', data=frm)
+#         dset3 = f1.create_dataset(str(k1)+'_lc', np.array(lc).shape, dtype='f', data=lc)
+#         ax.plot(frm, lc)
+#         f1.close()
+
 
 #----------------------------------------------------------------------------------------
 
