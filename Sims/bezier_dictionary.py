@@ -188,6 +188,8 @@ def plot_sims(no, file):
     """ The earlier plots were a mistake, forgot to uncomment something... now 
     we're gonna just plot some results... to show sir
     
+    :param no: how many samples
+    :param file: file number (1 for file n_1.hdf5, 2 for file n_2.hdf5 etc.)
     """
     ca2=['#432371', '#714674', '#9F6976', '#CC8B79', '#FAAE7B']
 

@@ -41,13 +41,25 @@ def gen_write_feature(content,feature_map,data_type, fin_type):
     out = tf.train.Example(features=tf.train.Features(feature=desc))
     return(out)
 
-# This is used to write a tfr record file. Add:
-# a filename,
-# the entire content as an n dimensional array,
-# the feature map array which is the key for each column
-# data_type, which defines the type while serialising data for storage. one of 4 options array, float, int, byte (keywords: ar, fl, i, b)
-# fin_type, the actual data type of data, which determines the memory of stored data, a valid np data type
+
 def write_tfr_record(filename,content,feature_map,data_type, fin_type):
+    """ This is used to write a tfr record file.
+    :param filename: a filename
+    :param content: the entire content as an n dimensional array
+    :param feature_map: key or column name for each column
+    :param data_type: defines the type while serialising data for storage. 
+        one of 4 options array, float, int, byte (keywords: ar, fl, i, b)
+    :param fin_type: the actual data type of data, which determines the memory of stored data,
+        a valid np data type
+
+    Example :-
+    write_tfr_record('testthecode',[[32.5,[3,3,3]],[22.66,[2,2,2]],[333.4,[8,8,8]]],
+    ['id1','id2'],['fl','ar'],['float32','int8'])
+
+    Returns :-
+    count, the number of elements written to the file
+
+    """
     if(len(content[0]) != len(feature_map) != len(data_type)):
         print('inconsistent sampling')
         return 0
@@ -92,13 +104,23 @@ def gen_read_feature(content, feature_map, data_type,fin_type):
     
     return(output)
  
-# This is used to read a tfr record file. Add:
-# a filename,
-# the feature map array which is the key for each column (as defined previously in tfr record file)
-# data_type, which defines the type while serialising data for storage. one of 4 options array, float, int, byte (keywords: ar, fl, i, b)
-# fin_type, the actual data type of data, which determines the memory of stored data, a valid tensorflow data type
-# the output is returned in form of numpy arrays one for each feature.
+
 def read_tfr_record(filename, feature_map, data_type, fin_type):
+    """ This is used to read a tfr record file.
+
+    :param filename:a filename
+    :param feature_map:key for each column (as defined previously in tfr record file)
+    :param data_type:defines the type while serialising data for storage. one of 4 options array, float, int, byte (keywords: ar, fl, i, b)
+    :param fin_type:actual data type of data, which determines the memory of stored data, a valid tensorflow data type
+    
+    Returns :-
+    A numpy array with each column containing one feature
+
+    Example :-
+    ip,tp,pp,sm,ss,plp,fpsp = read_tfr_record('../processed_directories/001026133',
+    ['pred_map','scale_median','scale_std'],['ar','fl','fl'], [ tf.float32, tf.float32, tf.float32])
+
+    """
     tfr_dataset = tf.data.TFRecordDataset([filename]) 
     dataset = tfr_dataset.map(lambda x: gen_read_feature(x, feature_map, data_type, fin_type))
     #print(dataset)
@@ -116,6 +138,8 @@ def read_tfr_record(filename, feature_map, data_type, fin_type):
     
     return(output2)
 
+
+#-----------------------------------------------------------------------------------------------
 # this function call will extract the data from the results directory
 # [1,0,0]: pl, [0,1,0]:fps, [0,0,1]:bkg
 # scaled = (observed - median) / (std - median )
