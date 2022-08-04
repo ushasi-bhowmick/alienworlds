@@ -448,30 +448,6 @@ def run_bezier_sim(shapes_list, orbit_list, resolution):
         frm = np.linspace(-fl,fl, len(lc2d))
         frmlist.append(frm)
 
-        # sim_2d = dysim.Simulator (1, 1000, 700, limb_u1=0.0, limb_u2=0.0)
-        # meg_2d = dysim.Megastructure(2, isrot=True)
-        # meg_2d.Plcoords = np.array(bez_shape)
-        # sim_2d.add_megs(meg_2d)
-        # # sim_2d.set_frame_length()
-        # sim_2d.simulate_transit()
-        # TA = dysim.Transit_Animate(sim_2d.road, sim_2d.megs, lc2d, sim_2d.frames)
-        # TA.go(ifsave=True,filepath='testbezier.gif')
-
-        # plt.style.use('seaborn-bright')
-        # fig, ax = plt.subplots(1,1, figsize = (20,7), sharex=True)
-
-        # frm = np.linspace(-fl,fl, len(lc2d))
-        # ax.plot(frm,lc2d,label = '2d')
-        # ax.legend()
-        # ax.set_ylabel('Flux')
-        # ax.set_title("Bezier Transit")
-        # plt.suptitle('2D vs 3D transiting objects')
-
-        # df = pd.DataFrame(zip(frm, lc2d, lc2dstd), columns=['frame','flux', 'std'])
-        # df.to_csv('solarsim.csv', index='False', sep=',')
-        #np.savetxt('2d3d_0.1R_circ.csv', np.transpose(np.array([frm, lc2d, lc2dstd, lc3d, lc3dstd])),delimiter=',', header='frame, 2d, 2dstd, 3d, 3dstd')
-        # plt.savefig('solarsim.png')
-
     return(lc_list, lc_std_list, frmlist)
 
 def analyse_scaling():
