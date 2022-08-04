@@ -434,8 +434,8 @@ def run_bezier_sim(shapes_list, orbit_list, resolution):
     for shape,orb in zip(shapes_list, orbit_list):
         bez_shape = shape
         Rorb = orb
-        with Pool(processes=4) as pool:
-            output = np.asarray(pool.map(bezier_sim, range(16)))
+        with Pool(processes=3) as pool:
+            output = np.asarray(pool.map(bezier_sim, range(18)))
             lc2dsum=[np.array(el[0]) for el in output]
             print(np.array(lc2dsum).shape)
             lc2d = np.mean(lc2dsum, axis = 0)
@@ -567,10 +567,42 @@ def analyse_scaling_rorb():
     plt.savefig('testng_analytics3.png')
     plt.show()
 
+
+def make_scaling_directory():
+    hf = h5py.File("../Shape_Directory/shape_list/n_7.hdf5", 'r')
+    shape = np.array(hf.get('rad_0.6_edg_1.0_4'))
+    shlist = [shape, shape*1.5, shape*2, shape*2.5, shape*3, shape*3.5]
+    scale = [1,1.5,2,2.5,3,3.5]
+
+    lclist, lcstdlist, frmlist = run_bezier_sim(shlist, [2,2,2,2,2,2], 20000)
+
+    net = []
+    for i in range(6):
+        net.append(frmlist[i])
+        net.append(lclist[i])
+    net = np.array(net).transpose()
+    df = pd.DataFrame(net, columns=['frm_2', 'lc_2','frm_4', 'lc_4','frm_8', 'lc_8','frm_16', 'lc_16','frm_32', 'lc_32','frm_64', 'lc_64'])
+    df.to_csv('size_scaling.csv')
+
+def make_scaling_directory_rorb():
+    hf = h5py.File("../Shape_Directory/shape_list/n_7.hdf5", 'r')
+    shape = np.array(hf.get('rad_0.6_edg_1.0_4'))
+    scale = [2,4,8,16,32,64]
+    
+    lclist, lcstdlist, frmlist = run_bezier_sim([shape,shape,shape,shape,shape,shape], scale, 20000)
+    
+    net = []
+    for i in range(6):
+        net.append(frmlist[i])
+        net.append(lclist[i])
+    net = np.array(net).transpose()
+    df = pd.DataFrame(net, columns=['frm_2', 'lc_2','frm_4', 'lc_4','frm_8', 'lc_8','frm_16', 'lc_16','frm_32', 'lc_32','frm_64', 'lc_64'])
+    df.to_csv('rorb_scaling.csv')
 #--------------------------------------------------------------------------------
 
 # analyse_scaling_rorb()
 #shape_dictionary()
+make_scaling_directory()
 
 # # accessing this
 # hf = h5py.File("../Shape_Directory/shape_list/n_3.hdf5", 'r')
