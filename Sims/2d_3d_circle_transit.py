@@ -413,7 +413,8 @@ def bezier_sim(x):
     global fl
     np.random.seed(3456*x)
     sim_2d = dysim.Simulator (1, res, 600, limb_u1=0.0, limb_u2=0.0)
-    meg_2d = dysim.Megastructure(Rorb, iscircle=True, Rcircle=0.3, isrot=True)
+    r = max([-min(bez_shape[:,0]), max(bez_shape[:,0]), -min(bez_shape[:,1]), max(bez_shape[:,1])])
+    meg_2d = dysim.Megastructure(Rorb, iscircle=True, Rcircle=r, isrot=False)
     # meg_2d.Plcoords = np.array(bez_shape)
     sim_2d.add_megs(meg_2d)
     sim_2d.set_frame_length()
@@ -589,7 +590,7 @@ def make_scaling_directory_rorb():
     shape = np.array(hf.get('rad_0.6_edg_1.0_4'))
     scale = [2,4,8,16,32,64]
     
-    lclist, lcstdlist, frmlist = run_bezier_sim([shape,shape,shape,shape,shape,shape], scale, 20000)
+    lclist, lcstdlist, frmlist = run_bezier_sim([shape,shape,shape,shape,shape,shape], scale, 200)
     
     net = []
     for i in range(6):
@@ -597,12 +598,12 @@ def make_scaling_directory_rorb():
         net.append(lclist[i])
     net = np.array(net).transpose()
     df = pd.DataFrame(net, columns=['frm_2', 'lc_2','frm_4', 'lc_4','frm_8', 'lc_8','frm_16', 'lc_16','frm_32', 'lc_32','frm_64', 'lc_64'])
-    df.to_csv('rorb_scaling.csv')
+    df.to_csv('rorb_scaling_ground.csv')
 #--------------------------------------------------------------------------------
 
 # analyse_scaling_rorb()
 #shape_dictionary()
-make_scaling_directory()
+make_scaling_directory_rorb()
 
 # # accessing this
 # hf = h5py.File("../Shape_Directory/shape_list/n_3.hdf5", 'r')
