@@ -24,7 +24,7 @@ rorb_arr=np.around(np.logspace(0.31,3,10), 2)
 
 #resolution setters
 frame_res=300
-mcmc_pts=15000
+mcmc_pts=3000
 
 man = Manager()
  
@@ -33,7 +33,7 @@ frame_l=man.list()
 #variable parameters
 # Rpl: 1, 5, 10, 30, 50
 # Rorb: 2, 4, 16, 64, 128
-Rpl=100*rpl_arr[0]
+Rpl=100*rpl_arr[6]
 print(Rpl)
 
 Rorb=200
@@ -71,24 +71,24 @@ for r in rorb_arr:
     global frm
     for u1ss in [0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]:
         plt.style.use('seaborn-bright') 
-        fig, ax = plt.subplots(1,1, figsize = (10,10))
-        for bss in [1,1.2]:
+        # fig, ax = plt.subplots(1,1, figsize = (10,10))
+        for bss in [0.0,0.2,0.4,0.6,0.8,1.0,1.2,1.4]:
             b=np.arcsin(bss*Rstar/Rorb)
             
-            for u2ss in [0.0,0.2,0.4]: 
+            for u2ss in [0.0,0.2,0.4,0.6]: 
                 u1=u1ss
                 u2=u2ss  
                 frame_l[:]=[]
                 # start 4 worker processes
                 with Pool(processes=40) as pool:
-                    lc2dsum = np.asarray(pool.map(test_multi_loops_2d, range(80)))
+                    lc2dsum = np.asarray(pool.map(test_multi_loops_2d, range(120)))
                     lc2d = np.mean(lc2dsum, axis = 0)
                     lc2dstd = np.sqrt(np.mean((lc2dsum-lc2d)**2, axis=0))
                     #print("--- %s min ---" %((time.time() - start_time)/60))
 
                 
                 frm = np.linspace(-frame_l[0], frame_l[0], frame_res)
-                ax.plot(frm,lc2d,label = 'u2_'+str(u2ss)+'b_'+str(bss))
+                # ax.plot(frm,lc2d,label = 'u2_'+str(u2ss)+'b_'+str(bss))
                 
                 try: df = pd.read_csv('../Computation_Directory/Rpl_'+str(np.around(Rpl,2))+'/2d_rorb_'+str(r)+'.csv', sep=',')
                 except:
@@ -103,12 +103,12 @@ for r in rorb_arr:
             print("Count:", ' u1:',u1, ' b:',np.around(b*180/np.pi,2), 'rorb:',Rorb)
             print("--- %s min ---" %((time.time() - start_time)/60))    
   
-        ax.legend()
-        ax.set_xlabel('Phase')
-        ax.set_ylabel('Flux')
-        ax.set_title("$R_{pl}$ ="+str(np.around(Rpl,2))+" $R_{st}$, Orbit: = "+str(r)+" $R_{st}$, e: 0.0, u1:"+str(u1ss))
-        plt.savefig('../Computation_Directory/Rpl_'+str(np.around(Rpl,2))+'/u1_'+str(u1ss)+'_rorb_'+str(r)+'.png')
-        plt.close()
+        # ax.legend()
+        # ax.set_xlabel('Phase')
+        # ax.set_ylabel('Flux')
+        # ax.set_title("$R_{pl}$ ="+str(np.around(Rpl,2))+" $R_{st}$, Orbit: = "+str(r)+" $R_{st}$, e: 0.0, u1:"+str(u1ss))
+        # plt.savefig('../Computation_Directory/Rpl_'+str(np.around(Rpl,2))+'/u1_'+str(u1ss)+'_rorb_'+str(r)+'.png')
+        # plt.close()
 
         
     
