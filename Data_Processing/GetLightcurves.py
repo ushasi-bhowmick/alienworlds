@@ -138,6 +138,19 @@ def read_tfr_record(filename, feature_map, data_type, fin_type):
     
     return(output2)
 
+def byte_arr_to_np(arr):
+    """converts a byte string to numpy array... useful for converting string columns
+       from read_tfr_record to appropriate non-messy format for future use.
+
+    :param arr: array to be converted to the appropriate format
+
+    Returns :-
+    Perfectly formatted numpy array
+    """
+    return(np.array([str(el)[2:-1] for el in arr]))
+
+
+
 
 #-----------------------------------------------------------------------------------------------
 # this function call will extract the data from the results directory
