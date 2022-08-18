@@ -66,11 +66,11 @@ def test_multi_loops_2d(x):
     sim_2d.simulate_transit()  
     return(sim_2d.lc) 
 
-for r in rorb_arr[5:6]:
+for r in rorb_arr[6:]:
     Rorb=r*100
     global frm
     for u1ss in [0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]:
-    # for u1ss in [0.4,0.5,0.6,0.7,0.8,0.9]:
+    # for u1ss in [0.6,0.7,0.8,0.9]:
         plt.style.use('seaborn-bright') 
         # fig, ax = plt.subplots(1,1, figsize = (10,10))
         for bss in [0.0,0.2,0.4,0.6,0.8,1.0,1.2,1.4]:
