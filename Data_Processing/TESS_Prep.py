@@ -5,7 +5,7 @@ import os
 from scipy.interpolate import interp1d
 from astropy.io import fits,ascii
 import sys
-from Data_Processing.DataPrepModule2 import CATALOG
+
 sys.path.append('C:\\Users\\Hp\\Documents\FYProj\\alienworlds\\Data_Processing')
 import GetLightcurves as gc
 
@@ -20,7 +20,8 @@ PS: Will edit out the Kepler Code as well, later.
 """
 
 filepath = '/media/ushasi/Elements/Masters_Project_Data/TESS/'
-CATALOG = ''
+filepath = 'E:\\Masters_Project_Data\\TESS\\'
+CATALOG = "../../Catalogs/"
 
 def remove_nan(red_flux):
     for i in range(0,len(red_flux)):
@@ -207,7 +208,6 @@ def segmentation_map(hdu, lab_arr, bins, clean_param = 1.0, skip_all_bkg=True):
     return(op_dict, "success")
 
 
-
 def segmented_directory(pathin, pathout, bins):
     """ This function creates a directory of objects where each file contains a lightcurve 
     along with a segmentation map. Useful to create training samples for the semantic segmentation
@@ -279,6 +279,12 @@ def TESS_single_sector(opfile, sector, bins=2000, crop=0.5, phaselength=1):
     Returns:-
     None, but saves the associated TFRrecords file in the chosen directory.
 
+    Note:-
+    If using the 'read_tfr_record' function from the GetLightcurves module, use the following settings:
+    feature_map = ['flux', 'phase', 'id', 'pl_no', 'tperiod', 'tdur']
+    data_type = ['ar', 'ar', 'b', 'i', 'fl', 'fl']
+    fin_type = [tf.float32, tf.float32, tf.string, tf.int8, tf.float32, tf.float32]
+
     """
 
     entries = os.listdir(filepath+'sector'+str(sector)+'/')
@@ -289,13 +295,16 @@ def TESS_single_sector(opfile, sector, bins=2000, crop=0.5, phaselength=1):
     nettp =[]
     nettd =[]
 
-    for entry in entries[:50]:
+    for entry in entries:
         hdu = fits.open(filepath+'sector'+str(sector)+'/'+entry)
         tid = entry[30:46]
         n = len(hdu)
         for i in range(1, n-1):
             print('kid: ', tid, i)
-            df, tp, td, _ = sort_data(hdu, i, crop, phaselength, bins)
+            try: df, tp, td, _ = sort_data(hdu, i, crop, phaselength, bins)
+            except: 
+                print('miss', tid)
+                continue
             netfl.append(np.array(df['flux']))
             netph.append(np.array(df['phase']))
             netid.append(tid)
@@ -331,14 +340,20 @@ def TESS_single_sector_local_global(opfile, sector, lv_bins=200, gv_bins=2000):
     nettp =[]
     nettd =[]
 
-    for entry in entries[:50]:
+    for entry in entries:
         hdu = fits.open(filepath+'sector'+str(sector)+'/'+entry)
         tid = entry[30:46]
         n = len(hdu)
         for i in range(1, n-1):
             print('kid: ', tid, i)
-            df, tp, td, _ = sort_data(hdu, i, 'lv', 1, lv_bins)
-            dfg, tp, td, _ = sort_data(hdu, i, 0.5, 1, gv_bins, False)
+            try: df, tp, td, _ = sort_data(hdu, i, 'lv', 1, lv_bins)
+            except:
+                print('miss', tid)
+                continue
+            try: dfg, tp, td, _ = sort_data(hdu, i, 0.5, 1, gv_bins, False)
+            except:
+                print('miss', tid)
+                continue
             netfl_l.append(np.array(df['flux']))
             netfl_g.append(np.array(dfg['flux']))
             netid.append(tid)
@@ -358,7 +373,7 @@ def TESS_segmented_raw(opfile, sector, bins=4000):
     netfl =[]
     netid =[]
 
-    for entry in entries[:50]:
+    for entry in entries:
         hdu = fits.open(filepath+'sector'+str(sector)+'/'+entry)
         tid = entry[30:46]
 
@@ -379,4 +394,4 @@ def TESS_segmented_raw(opfile, sector, bins=4000):
 
 #--------------------------------------------------------------------------------   
 
-TESS_segmented_raw('testtrainsample', 23, 4000)
+TESS_single_sector('../../training_data/TESS_sector1_bezier', 1, 500, 'lv')

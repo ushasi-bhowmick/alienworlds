@@ -1,7 +1,7 @@
 import random
 import numpy as np
 import matplotlib.pyplot as plt
-import aliensims as dysim
+# import aliensims as dysim
 import os
 import time
 import pandas as pd
@@ -221,8 +221,63 @@ def plot_sims(no, file):
     plt.savefig("sample_from_n"+str(file)+".png")
     plt.show()
 
+def select_1000_shapes():
+    """ temporary function to select the some 10 shapes from each directory in shape list. Now we use these to iterate over and create a grid.
+    """
+    shape_entries = os.listdir('../Shape_Directory/shape_list/')
+    np.random.seed(100100)
 
-plot_sims(5, 14)
+    choice = np.random.randint(0,600,10)
+    tabs = 0
+    f1 = h5py.File("../Shape_Directory/filtered_list.hdf5", "a")
+    for entry in shape_entries:
+        print(entry)
+        hf = h5py.File("../Shape_Directory/shape_list/"+entry, 'r')
+        i=0
+        
+        for ki in hf:
+            if((choice==i).any()):
+                n = np.array(hf.get(ki))
+                dset1 = f1.create_dataset('sh'+str(tabs), np.array(n).shape, dtype='f', data=n)
+                dset1.attrs['n_val'] = entry[:-5]
+                dset1.attrs['head'] = str(ki)
+                tabs+=1
+            i+=1
+
+
+def one_config_1000_shapes(rorb, scale):
+    """ This is an attempt to build the extended dictionary... lets see how many we get through.
+    """
+    f1 = h5py.File("../Shape_Directory/filtered_list.hdf5", "r")
+
+    for ki in f1:
+        print(ki)
+        sh = np.array(f1.get(ki))
+        fig, ax = plt.subplots(1,1,figsize=(10,10))
+        
+        i+=1
+        if(i%50==0):
+            plt.savefig("../Shape_Directory/shape_grid/orb"+str(np.around(rorb,2))+'_scale'+str(np.around(scale,2))+'_'+str(i)+'.png')
+            plt.close()
+            fig, ax = plt.subplots(1,1,figsize=(10,10))
+
+        lc, lcstd, frm = run_one_bezier_sim(sh, 2, 5000)
+            
+        try: df = pd.read_csv('../Shape_Directory/shape_grid/Rorb_'+str(np.around(rorb,2))+'scl_'+str(np.around(scale,2))+'.csv', sep=',')
+        except:
+            df = pd.DataFrame(zip(frm, lc), columns=[str(ki)+'_frm',str(ki)+'_lc'])
+            df.to_csv('../Shape_Directory/shape_grid/Rorb_'+str(np.around(rorb,2))+'scl_'+str(np.around(scale,2))+'.csv', sep=',')
+            continue
+        df[str(ki)+'_frm']=frm
+        df[str(ki)+'_lc']=lc
+        df.to_csv('../Shape_Directory/shape_grid/Rorb_'+str(np.around(rorb,2))+'scl_'+str(np.around(scale,2))+'.csv', sep=',')
+
+
+#----------------------------------------------------------------------------
+
+scale_arr=np.array([0.2,0.4,0.6,0.8,1.0])
+rorb_arr=np.around(np.logspace(0.31,2,5), 2)
+
 
 #----------------------------------------------------------------------------
 
