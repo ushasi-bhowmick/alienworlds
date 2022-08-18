@@ -1,7 +1,7 @@
 import random
 import numpy as np
 import matplotlib.pyplot as plt
-# import aliensims as dysim
+import aliensims as dysim
 import os
 import time
 import pandas as pd
@@ -115,8 +115,8 @@ def run_one_bezier_sim(shapes, orbit, resolution):
     res = resolution
     bez_shape = shapes
     Rorb = orbit
-    with Pool(processes=40) as pool:
-        output = np.asarray(pool.map(bezier_sim, range(80)))
+    with Pool(processes=3) as pool:
+        output = np.asarray(pool.map(bezier_sim, range(6)))
         lc2dsum=[np.array(el[0]) for el in output]
         lc2d = np.mean(lc2dsum, axis = 0)
         fl = np.mean(np.array([el[1] for el in output]))
@@ -248,36 +248,44 @@ def select_1000_shapes():
 def one_config_1000_shapes(rorb, scale):
     """ This is an attempt to build the extended dictionary... lets see how many we get through.
     """
+    fig, ax = plt.subplots(1,1,figsize=(10,10))
     f1 = h5py.File("../Shape_Directory/filtered_list.hdf5", "r")
-
+    i=0
     for ki in f1:
-        print(ki)
         sh = np.array(f1.get(ki))
-        fig, ax = plt.subplots(1,1,figsize=(10,10))
+        
         
         i+=1
-        if(i%50==0):
+        if(i==3): break
+        if(i%2==0):
             plt.savefig("../Shape_Directory/shape_grid/orb"+str(np.around(rorb,2))+'_scale'+str(np.around(scale,2))+'_'+str(i)+'.png')
             plt.close()
             fig, ax = plt.subplots(1,1,figsize=(10,10))
 
-        lc, lcstd, frm = run_one_bezier_sim(sh, 2, 5000)
+        lc, lcstd, frm = run_one_bezier_sim(sh*scale, rorb, 2000)
             
         try: df = pd.read_csv('../Shape_Directory/shape_grid/Rorb_'+str(np.around(rorb,2))+'scl_'+str(np.around(scale,2))+'.csv', sep=',')
         except:
+            print("check in",str(ki)+'_frm')
             df = pd.DataFrame(zip(frm, lc), columns=[str(ki)+'_frm',str(ki)+'_lc'])
-            df.to_csv('../Shape_Directory/shape_grid/Rorb_'+str(np.around(rorb,2))+'scl_'+str(np.around(scale,2))+'.csv', sep=',')
+            df.to_csv('../Shape_Directory/shape_grid/Rorb_'+str(np.around(rorb,2))+'scl_'+str(np.around(scale,2))+'.csv', index=False,sep=',')
             continue
         df[str(ki)+'_frm']=frm
         df[str(ki)+'_lc']=lc
-        df.to_csv('../Shape_Directory/shape_grid/Rorb_'+str(np.around(rorb,2))+'scl_'+str(np.around(scale,2))+'.csv', sep=',')
-
+        print("check out",str(ki)+'_frm')
+        df.to_csv('../Shape_Directory/shape_grid/Rorb_'+str(np.around(rorb,2))+'scl_'+str(np.around(scale,2))+'.csv', index=False,sep=',')
+        ax.plot(frm, lc)
 
 #----------------------------------------------------------------------------
 
 scale_arr=np.array([0.2,0.4,0.6,0.8,1.0])
 rorb_arr=np.around(np.logspace(0.31,2,5), 2)
 
+# for sc in scale_arr[3:5]:
+#     for rorb in rorb_arr[0:2]:
+#         one_config_1000_shapes(rorb, sc)
+
+one_config_1000_shapes(2,1)
 
 #----------------------------------------------------------------------------
 

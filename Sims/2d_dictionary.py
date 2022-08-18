@@ -51,8 +51,7 @@ if not os.path.exists('../Computation_Directory/Rpl_'+str(np.around(Rpl,2))):
 start_time = time.time()
 
 def test_multi_loops_2d(x):  
-    global Rpl
-    
+    global Rpl 
     global u1
     global u2
     global b

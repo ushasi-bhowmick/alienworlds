@@ -5,7 +5,7 @@ import os
 from scipy.interpolate import interp1d
 from astropy.io import fits,ascii
 import sys
-
+from Data_Processing.DataPrepModule2 import CATALOG
 sys.path.append('C:\\Users\\Hp\\Documents\FYProj\\alienworlds\\Data_Processing')
 import GetLightcurves as gc
 
