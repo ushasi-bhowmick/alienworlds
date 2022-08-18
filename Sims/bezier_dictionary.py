@@ -73,7 +73,7 @@ def bezier_sim(x):
     global Rorb
     global res
     np.random.seed(3456*x)
-    sim_2d = dysim.Simulator (1, res, 500, limb_u1=0.0, limb_u2=0.0)
+    sim_2d = dysim.Simulator (1, res, 300, limb_u1=0.0, limb_u2=0.0)
     meg_2d = dysim.Megastructure(Rorb, isrot=True)
     meg_2d.Plcoords = np.array(bez_shape)
     sim_2d.add_megs(meg_2d)
@@ -92,8 +92,8 @@ def run_bezier_sim(shapes_list, orbit_list, resolution):
     for shape,orb in zip(shapes_list, orbit_list):
         bez_shape = shape
         Rorb = orb
-        with Pool(processes=4) as pool:
-            output = np.asarray(pool.map(bezier_sim, range(16)))
+        with Pool(processes=35) as pool:
+            output = np.asarray(pool.map(bezier_sim, range(70)))
             lc2dsum=[np.array(el[0]) for el in output]
             print(np.array(lc2dsum).shape)
             lc2d = np.mean(lc2dsum, axis = 0)
@@ -115,13 +115,13 @@ def run_one_bezier_sim(shapes, orbit, resolution):
     res = resolution
     bez_shape = shapes
     Rorb = orbit
-    with Pool(processes=3) as pool:
-        output = np.asarray(pool.map(bezier_sim, range(6)))
+    with Pool(processes=35) as pool:
+        output = np.asarray(pool.map(bezier_sim, range(70)))
         lc2dsum=[np.array(el[0]) for el in output]
         lc2d = np.mean(lc2dsum, axis = 0)
         fl = np.mean(np.array([el[1] for el in output]))
         lc2dstd = np.sqrt(np.mean((lc2dsum-lc2d)**2, axis=0))
-        print("--- %s min ---" % ((time.time() - start_time)/60))
+        # print("--- %s min ---" % ((time.time() - start_time)/60))
     frm = np.linspace(-fl,fl, len(lc2d))
     return(lc2d, lc2dstd, frm)
 
@@ -227,7 +227,7 @@ def select_1000_shapes():
     shape_entries = os.listdir('../Shape_Directory/shape_list/')
     np.random.seed(100100)
 
-    choice = np.random.randint(0,600,10)
+    choice = np.random.shuffle(np.arange(0,600,1))[:100]
     tabs = 0
     f1 = h5py.File("../Shape_Directory/filtered_list.hdf5", "a")
     for entry in shape_entries:
@@ -254,38 +254,42 @@ def one_config_1000_shapes(rorb, scale):
     for ki in f1:
         sh = np.array(f1.get(ki))
         
-        
         i+=1
-        if(i==3): break
-        if(i%2==0):
+        
+        if(i%50==0):
             plt.savefig("../Shape_Directory/shape_grid/orb"+str(np.around(rorb,2))+'_scale'+str(np.around(scale,2))+'_'+str(i)+'.png')
             plt.close()
             fig, ax = plt.subplots(1,1,figsize=(10,10))
+            print("--- %s min ---" % ((time.time() - start_time)/60))
 
-        lc, lcstd, frm = run_one_bezier_sim(sh*scale, rorb, 2000)
+        lc, lcstd, frm = run_one_bezier_sim(sh*scale, rorb, 5000)
             
         try: df = pd.read_csv('../Shape_Directory/shape_grid/Rorb_'+str(np.around(rorb,2))+'scl_'+str(np.around(scale,2))+'.csv', sep=',')
         except:
-            print("check in",str(ki)+'_frm')
+            # print("check in",str(ki)+'_frm')
             df = pd.DataFrame(zip(frm, lc), columns=[str(ki)+'_frm',str(ki)+'_lc'])
             df.to_csv('../Shape_Directory/shape_grid/Rorb_'+str(np.around(rorb,2))+'scl_'+str(np.around(scale,2))+'.csv', index=False,sep=',')
             continue
         df[str(ki)+'_frm']=frm
         df[str(ki)+'_lc']=lc
-        print("check out",str(ki)+'_frm')
+        print("check out",str(ki), rorb, scale)
         df.to_csv('../Shape_Directory/shape_grid/Rorb_'+str(np.around(rorb,2))+'scl_'+str(np.around(scale,2))+'.csv', index=False,sep=',')
         ax.plot(frm, lc)
 
 #----------------------------------------------------------------------------
 
-scale_arr=np.array([0.2,0.4,0.6,0.8,1.0])
-rorb_arr=np.around(np.logspace(0.31,2,5), 2)
+# scale_arr=np.array([0.2,0.4,0.6,0.8,1.0])
+# rorb_arr=np.around(np.logspace(0.31,2,5), 2)
 
-# for sc in scale_arr[3:5]:
-#     for rorb in rorb_arr[0:2]:
+# for sc in scale_arr[4:]:
+#     for rorb in rorb_arr[:1]:
 #         one_config_1000_shapes(rorb, sc)
 
-one_config_1000_shapes(2,1)
+select_1000_shapes()
+
+# one_config_1000_shapes(2.5,0.2)
+
+#1.0: 5000    0.8: 5000     0.6:  6000     0.4: 8000      0.2:  12000    
 
 #----------------------------------------------------------------------------
 
