@@ -278,14 +278,14 @@ def one_config_1000_shapes(rorb, scale):
 
 #----------------------------------------------------------------------------
 
-# scale_arr=np.array([0.2,0.4,0.6,0.8,1.0])
-# rorb_arr=np.around(np.logspace(0.31,2,5), 2)
+scale_arr=np.array([0.2,0.4,0.6,0.8,1.0])
+rorb_arr=np.around(np.logspace(0.31,2,5), 2)
 
-# for sc in scale_arr[4:]:
-#     for rorb in rorb_arr[:1]:
-#         one_config_1000_shapes(rorb, sc)
+for sc in scale_arr[4:]:
+    for rorb in rorb_arr[:1]:
+        one_config_1000_shapes(rorb, sc)
 
-select_1000_shapes()
+# select_1000_shapes()
 
 # one_config_1000_shapes(2.5,0.2)
 
