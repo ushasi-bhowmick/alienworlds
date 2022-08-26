@@ -296,15 +296,15 @@ def one_config_1000_shapes(rorb, scale, filename='filtered_list.hdf5'):
 
 #----------------------------------------------------------------------------
 
-shape_dictionary([5,6,7,8,9,10,11,12,13,14])
-select_1000_shapes(20, 'filtlist.hdf5')
+# shape_dictionary([5,6,7,8,9,10,11,12,13,14])
+# select_1000_shapes(20, 'filtlist.hdf5')
 
-scale_arr=np.array([0.2,0.4,0.6,0.8,1.0])
-rorb_arr=np.around(np.logspace(0.31,2,5), 2)
+# scale_arr=np.array([0.2,0.4,0.6,0.8,1.0])
+# rorb_arr=np.around(np.logspace(0.31,2,5), 2)
 
-for sc in scale_arr[4:]:
-    for rorb in rorb_arr[:1]:
-        one_config_1000_shapes(rorb, sc)
+# for sc in scale_arr[4:]:
+#     for rorb in rorb_arr[:1]:
+#         one_config_1000_shapes(rorb, sc)
 
 # select_1000_shapes()
 
@@ -344,8 +344,9 @@ for sc in scale_arr[4:]:
 #----------------------------------------------------------------------------------------
 
 # #Diagnostic section
-# shape_entries = os.listdir('../Shape_Directory/shape_list/')
+# shape_entries = os.listdir('../Shape_Directory/shape_grid/')
 # hf = h5py.File("../Shape_Directory/shape_lc/n_5.hdf5", 'r')
 # print(len(hf), shape_entries)
+
 
 #----------------------------------------------------------------------------------------
