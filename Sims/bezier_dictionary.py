@@ -251,10 +251,18 @@ def one_config_1000_shapes(rorb, scale):
     fig, ax = plt.subplots(1,1,figsize=(10,10))
     f1 = h5py.File("../Shape_Directory/filtered_list.hdf5", "r")
     i=0
+
+    if(scale>0.799): res = 5000
+    elif(scale>0.5999): res = 6000
+    elif(scale>0.399): res = 8000
+    else: res = 12000
+    print('res:',res)
     for ki in f1:
         sh = np.array(f1.get(ki))
         
         i+=1
+        
+        
         
         if(i%50==0):
             plt.savefig("../Shape_Directory/shape_grid/orb"+str(np.around(rorb,2))+'_scale'+str(np.around(scale,2))+'_'+str(i)+'.png')
@@ -262,7 +270,7 @@ def one_config_1000_shapes(rorb, scale):
             fig, ax = plt.subplots(1,1,figsize=(10,10))
             print("--- %s min ---" % ((time.time() - start_time)/60))
 
-        lc, lcstd, frm = run_one_bezier_sim(sh*scale, rorb, 5000)
+        lc, lcstd, frm = run_one_bezier_sim(sh*scale, rorb, res)
             
         try: df = pd.read_csv('../Shape_Directory/shape_grid/Rorb_'+str(np.around(rorb,2))+'scl_'+str(np.around(scale,2))+'.csv', sep=',')
         except:
@@ -282,7 +290,7 @@ scale_arr=np.array([0.2,0.4,0.6,0.8,1.0])
 rorb_arr=np.around(np.logspace(0.31,2,5), 2)
 
 for sc in scale_arr[4:]:
-    for rorb in rorb_arr[:1]:
+    for rorb in rorb_arr[4:]:
         one_config_1000_shapes(rorb, sc)
 
 # select_1000_shapes()
