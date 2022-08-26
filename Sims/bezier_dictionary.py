@@ -1,12 +1,12 @@
 import random
 import numpy as np
 import matplotlib.pyplot as plt
-import aliensims as dysim
+# import aliensims as dysim
 import os
 import time
 import pandas as pd
 from transit import occultnonlin, occultquad
-from multiprocessing import Process, Pool
+from multiprocessing import Process, Pool, cpu_count
 from scipy.interpolate import interp1d
 from scipy.optimize import curve_fit
 from bezier import get_random_points, get_bezier_curve
@@ -17,9 +17,12 @@ warnings.filterwarnings("ignore")
 """LIBRARY OF ARBITRARY SHAPES: THE BEZIER WAY
 In this module we use bezier curves to generate a bunch of arbitrary shapes. These shapes 
 will be utilized to obtain corresponding LC. Hopefully we will be able to train a NN to reverse-
-engineer this. (I'm not too optimistic)
+engineer this. 
 
 """
+
+PROCESS_RANGE = 70
+CORES = cpu_count()
 
 start_time = time.time()
 bez_shape=[]
@@ -28,11 +31,29 @@ Rorb = 0
 res = 0
 fl = np.pi/2
 
-def shape_dictionary():
+def shape_dictionary(ns, no_of_rads=6, no_of_edges=5, no_in_each_config = 20):
+    """ This is a function meant to generate a number of random bezier shapes and use them for
+        further analysis. Total number of shapes this generates is 
+        ns*no_of_rads*no_of_edges*no_in_each_config
+
+        :param ns: array of n values - an n value determines the number of vertices in the shape
+        :param no_of_rads: divide the rad parameter space into an array of these many values
+        :param no_of_edges: divide the edgy parameter space into an array of these many values
+        :param no_in_each_config: number of random shapes generated per rad edgy config
+
+
+    """
+
+    if not os.path.exists('../Shape_Directory/shape_list/'):
+        os.mkdir('../Shape_Directory/shape_list/')
+
+    if not os.path.exists('../Shape_Directory/shape_plot/'):
+        os.mkdir('../Shape_Directory/shape_plot/')
+
     np.random.seed(101010101)
-    rads = np.linspace(0,1,6)
-    edges = np.sqrt(1/np.linspace(0.1,0.9,5) -1)
-    ns = [5,6,7,8,9,10,11,12,13,14]
+    rads = np.linspace(0,1,no_of_rads)
+    edges = np.sqrt(1/np.linspace(0.1,0.9,no_of_edges) -1)
+    # ns = [5,6,7,8,9,10,11,12,13,14]
 
     grid_size= 10
     grid=np.array([[[i,j]  for i in range(grid_size)] for j in range(grid_size)]).reshape(grid_size**2,2)
@@ -48,7 +69,7 @@ def shape_dictionary():
             ax.set_title("rad:"+str(np.around(rad,2)))
             col_cnt = 0
             for edgy in edges:
-                for num in range(20):
+                for num in range(no_in_each_config):
                     a = get_random_points(n=n, scale=0.8) 
                     x,y, _ = get_bezier_curve(a,rad=rad, edgy=edgy)
                     x = x - np.mean(x)
@@ -67,6 +88,8 @@ def shape_dictionary():
         plt.savefig('../Shape_Directory/shape_plot/n_'+str(n)+'.png')
         plt.close()
         f1.close()
+
+        print('n: ', n, " ...created!")
 
 def bezier_sim(x):
     global bez_shape
@@ -92,8 +115,8 @@ def run_bezier_sim(shapes_list, orbit_list, resolution):
     for shape,orb in zip(shapes_list, orbit_list):
         bez_shape = shape
         Rorb = orb
-        with Pool(processes=35) as pool:
-            output = np.asarray(pool.map(bezier_sim, range(70)))
+        with Pool(processes=CORES) as pool:
+            output = np.asarray(pool.map(bezier_sim, range(PROCESS_RANGE)))
             lc2dsum=[np.array(el[0]) for el in output]
             print(np.array(lc2dsum).shape)
             lc2d = np.mean(lc2dsum, axis = 0)
@@ -108,6 +131,8 @@ def run_bezier_sim(shapes_list, orbit_list, resolution):
     return(lc_list, lc_std_list, frmlist)
 
 def run_one_bezier_sim(shapes, orbit, resolution):
+    """ Run a bezier simulation for a 
+    """
     global bez_shape
     global Rorb
     global res
@@ -115,8 +140,8 @@ def run_one_bezier_sim(shapes, orbit, resolution):
     res = resolution
     bez_shape = shapes
     Rorb = orbit
-    with Pool(processes=35) as pool:
-        output = np.asarray(pool.map(bezier_sim, range(70)))
+    with Pool(processes=CORES) as pool:
+        output = np.asarray(pool.map(bezier_sim, range(PROCESS_RANGE)))
         lc2dsum=[np.array(el[0]) for el in output]
         lc2d = np.mean(lc2dsum, axis = 0)
         fl = np.mean(np.array([el[1] for el in output]))
@@ -126,8 +151,7 @@ def run_one_bezier_sim(shapes, orbit, resolution):
     return(lc2d, lc2dstd, frm)
 
 def analyse_bezier_results():
-    """ Ran the above simulations and hope to see if any of the bezier shapes made
-    Any damn difference. 
+    """ Ran the above simulations and hope to see if any of the bezier shapes made any difference. 
 
     """
 
@@ -147,46 +171,11 @@ def analyse_bezier_results():
             else: old = n
     ax[0].legend()
     plt.show()
-
-# To prove: A closed shape of a particular surface area gives the same LC... regardless of the
-# boundary. 
-def area_theorum():
-    hf = h5py.File("../Shape_Directory/shape_list/n_5.hdf5", 'r')
-    # print([k for k in hf])
-    np.random.seed(10)
-    simtri = dysim.Simulator(1, 5000, 600)
-    simsq = dysim.Simulator(1, 5000, 600)
-    # megtri = dysim.Megastructure(2, isrot=True)
-    # megtri.regular_polygons_2d(0.3,3)
-    # megrect = dysim.Megastructure(2, isrot=True, Plcoords=[[-0.171, -0.171, 0],[-0.171, 0.171, 0], [0.171, 0.171, 0], [0.171, -0.171, 0]])
-
-    megtri = dysim.Megastructure(2, isrot=True, Plcoords=np.array(hf.get('rad_1.0_edg_3.0_6')))
-    megrect = dysim.Megastructure(2, isrot=True, Plcoords=np.array(hf.get('rad_1.0_edg_3.0_7')))
-    simtri.add_megs(megtri)
-    simsq.add_megs(megrect)
-    simtri.set_frame_length()
-    simsq.set_frame_length()
-
-    lctrisum = []
-    lcrectsum = []
-    for i in range(10):
-        simsq.initialize()
-        simtri.initialize()
-        simsq.simulate_transit()
-        simtri.simulate_transit()
-        lctrisum.append(simtri.lc)
-        lcrectsum.append(simsq.lc)
-
-    lctri = np.mean(lctrisum, axis=0)
-    lcrect = np.mean(lcrectsum, axis=0)
-
-    plt.plot(simsq.frames, lcrect)
-    plt.plot(simtri.frames, lctri)
-    plt.show()
+  
 
 def plot_sims(no, file):
     """ The earlier plots were a mistake, forgot to uncomment something... now 
-    we're gonna just plot some results... to show sir
+    we're gonna just plot some results...
     
     :param no: how many samples
     :param file: file number (1 for file n_1.hdf5, 2 for file n_2.hdf5 etc.)
@@ -221,17 +210,29 @@ def plot_sims(no, file):
     plt.savefig("sample_from_n"+str(file)+".png")
     plt.show()
 
-def select_1000_shapes():
-    """ temporary function to select the some 10 shapes from each directory in shape list. Now we use these to iterate over and create a grid.
-    """
-    shape_entries = os.listdir('../Shape_Directory/shape_list/')
-    np.random.seed(100100)
+def select_1000_shapes(no_of_el_filt, filename='filtered_list.hdf5'):
+    """ function to select the some 10 shapes from each directory in shape list. Now we use these 
+    to iterate over and create a grid.
+    
+    :param no_of_el_filt: number of shapes to filter to create the grid (in this case 1000)
+    :param filename: name of the output hdf5 file where we store this.
 
-    choice = np.random.shuffle(np.arange(0,600,1))[:100]
+    """
+
+    shape_entries = os.listdir('../Shape_Directory/shape_list/')
+    chlen = len(shape_entries)
+
+    hf = h5py.File("../Shape_Directory/shape_list/"+shape_entries[0], 'r')
+   
+    np.random.seed(100100)
+    choice = np.arange(0,len(hf),1)
+    np.random.shuffle(choice)
+    choice = choice[:int(no_of_el_filt/chlen)]
+
     tabs = 0
-    f1 = h5py.File("../Shape_Directory/filtered_list.hdf5", "a")
+    f1 = h5py.File("../Shape_Directory/"+filename, "a")
     for entry in shape_entries:
-        print(entry)
+        print(entry,'...filtering')
         hf = h5py.File("../Shape_Directory/shape_list/"+entry, 'r')
         i=0
         
@@ -245,11 +246,20 @@ def select_1000_shapes():
             i+=1
 
 
-def one_config_1000_shapes(rorb, scale):
-    """ This is an attempt to build the extended dictionary... lets see how many we get through.
+def one_config_1000_shapes(rorb, scale, filename='filtered_list.hdf5'):
+    """ This is an attempt to build the extended dictionary... lets see how many we get through. This 
+    function simulates the lightcurve for all the shapes in an hdf5 list created by the select_1000_shapes
+    function for one configuration of rorb and scale.
+
+    :param rorb: radius of orbit
+    :param scale: scaling of the shape
+
     """
+    if not os.path.exists('../Shape_Directory/shape_grid/'):
+        os.mkdir('../Shape_Directory/shape_grid/')
+
     fig, ax = plt.subplots(1,1,figsize=(10,10))
-    f1 = h5py.File("../Shape_Directory/filtered_list.hdf5", "r")
+    f1 = h5py.File("../Shape_Directory/"+filename, "r")
     i=0
 
     if(scale>0.799): res = 5000
@@ -286,16 +296,18 @@ def one_config_1000_shapes(rorb, scale):
 
 #----------------------------------------------------------------------------
 
+shape_dictionary([5,6,7,8,9,10,11,12,13,14])
+select_1000_shapes(20, 'filtlist.hdf5')
+
 scale_arr=np.array([0.2,0.4,0.6,0.8,1.0])
 rorb_arr=np.around(np.logspace(0.31,2,5), 2)
 
 for sc in scale_arr[4:]:
-    for rorb in rorb_arr[4:]:
+    for rorb in rorb_arr[:1]:
         one_config_1000_shapes(rorb, sc)
 
 # select_1000_shapes()
 
-# one_config_1000_shapes(2.5,0.2)
 
 #1.0: 5000    0.8: 5000     0.6:  6000     0.4: 8000      0.2:  12000    
 
