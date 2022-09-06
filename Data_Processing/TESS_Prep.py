@@ -5,9 +5,9 @@ import os
 from scipy.interpolate import interp1d
 from astropy.io import fits,ascii
 import sys
-from Data_Processing.DataPrepModule2 import CATALOG
+# from Data_Processing.DataPrepModule2 import CATALOG
 sys.path.append('C:\\Users\\Hp\\Documents\FYProj\\alienworlds\\Data_Processing')
-import GetLightcurves as gc
+# import GetLightcurves as gc
 
 """TESS NAVIGATION MODULE
 This program will enable one to sift through TESS data corresponding to single sector DV 
@@ -19,8 +19,9 @@ PS: Will edit out the Kepler Code as well, later.
 
 """
 
-filepath = '/media/ushasi/Elements/Masters_Project_Data/TESS/'
-filepath = 'E:\\Masters_Project_Data\\TESS\\'
+FILEPATH_TESS = '/media/ushasi/Elements/Masters_Project_Data/TESS/'
+FILEPATH_KEPLER = '/media/ushasi/Elements/Masters_Project_Data/alienworlds_fps/'
+# filepath = 'E:\\Masters_Project_Data\\TESS\\'
 CATALOG = "../../Catalogs/"
 
 def remove_nan(red_flux):
@@ -252,8 +253,8 @@ def segmented_directory(pathin, pathout, bins):
             tdur = segmap['tdurs']
             tps = segmap['tps']
             tds = segmap['tds']
-            net = np.asarray([[lc[i],mask[i],cnt[i],tdur,tps,tds] for i in range(0,len(counts))], dtype='object')
-        gc.write_tfr_record(pathout+el[4:13],net,
+            net = np.asarray([[lc[i],mask[i],cnt[i],tdur,tps,tds] for i in range(0,len(lc))], dtype='object')
+            gc.write_tfr_record(pathout+el[4:13],net,
             ['input','mask','counts','tdur','tperiod','tdepth'],['ar','ar','ar','ar','ar','ar'],
             ['float32','bool', 'int8','float16','float16','float16'])
         print(tick,'hit:',el[4:13])
@@ -287,7 +288,7 @@ def TESS_single_sector(opfile, sector, bins=2000, crop=0.5, phaselength=1):
 
     """
 
-    entries = os.listdir(filepath+'sector'+str(sector)+'/')
+    entries = os.listdir(FILEPATH_TESS+'sector'+str(sector)+'/')
     netfl =[]
     netph =[]
     netid =[]
@@ -296,7 +297,7 @@ def TESS_single_sector(opfile, sector, bins=2000, crop=0.5, phaselength=1):
     nettd =[]
 
     for entry in entries:
-        hdu = fits.open(filepath+'sector'+str(sector)+'/'+entry)
+        hdu = fits.open(FILEPATH_TESS+'sector'+str(sector)+'/'+entry)
         tid = entry[30:46]
         n = len(hdu)
         for i in range(1, n-1):
@@ -332,7 +333,7 @@ def TESS_single_sector_local_global(opfile, sector, lv_bins=200, gv_bins=2000):
     
     """
 
-    entries = os.listdir(filepath+'sector'+str(sector)+'/')
+    entries = os.listdir(FILEPATH_TESS+'sector'+str(sector)+'/')
     netfl_l =[]
     netfl_g =[]
     netid =[]
@@ -341,7 +342,7 @@ def TESS_single_sector_local_global(opfile, sector, lv_bins=200, gv_bins=2000):
     nettd =[]
 
     for entry in entries:
-        hdu = fits.open(filepath+'sector'+str(sector)+'/'+entry)
+        hdu = fits.open(FILEPATH_TESS+'sector'+str(sector)+'/'+entry)
         tid = entry[30:46]
         n = len(hdu)
         for i in range(1, n-1):
@@ -369,12 +370,12 @@ def TESS_single_sector_local_global(opfile, sector, lv_bins=200, gv_bins=2000):
     gc.write_tfr_record(opfile, net, cols, datatype, fintype)
 
 def TESS_segmented_raw(opfile, sector, bins=4000):
-    entries = os.listdir(filepath+'sector'+str(sector)+'/')
+    entries = os.listdir(FILEPATH_TESS+'sector'+str(sector)+'/')
     netfl =[]
     netid =[]
 
     for entry in entries:
-        hdu = fits.open(filepath+'sector'+str(sector)+'/'+entry)
+        hdu = fits.open(FILEPATH_TESS+'sector'+str(sector)+'/'+entry)
         tid = entry[30:46]
 
         print('Processing kid ...', tid)
@@ -394,4 +395,33 @@ def TESS_segmented_raw(opfile, sector, bins=4000):
 
 #--------------------------------------------------------------------------------   
 
-TESS_single_sector('../../training_data/TESS_sector1_bezier', 1, 500, 'lv')
+# TESS_single_sector('../../training_data/TESS_sector1_bezier', 1, 500, 'lv')
+
+import warnings
+warnings.filterwarnings("ignore")
+
+#plotting the so called histogram
+# fig, axs = plt.subplots(1,1,figsize=(10,10))
+entries = os.listdir(FILEPATH_KEPLER)
+i=0
+listofnums= list(np.loadtxt('temp4'))
+
+for entry in entries[7000:8000]:
+    
+    try: hdu = fits.open(FILEPATH_KEPLER+entry)
+    except: continue
+    for n in range(1,len(hdu)-1):
+        i+=1
+        df,_,_,_ = sort_data(hdu, n, 'lv')
+        print(i,len(df))
+        listofnums.append(len(df))
+        np.savetxt('temp5',listofnums)
+    
+    hdu.close()
+
+plt.hist(listofnums, bins=100)
+np.savetxt('temp5',listofnums)
+plt.title('Kepler local view unbinned resolution')
+plt.savefig('keplerunbinnedres.png')
+plt.show()
+
