@@ -8,6 +8,13 @@ import copy
 import time
 from gfg import in_or_out
 
+## IMPORTANT NOTICE
+## This module uses a C++ wrapper for the in_or_out function. This saves a lot of time and makes code
+## run much faster. If there are any compatibility issues and you need a pure python equivalent, comment
+## out the import statement above and make the illustrated changes in the function "monte_carlo_multi" 
+## under the sims class. 
+
+
 """TRANSIT SIMULATION MODULE
 Simulated lightcurves generated for anything and everything going around a star of your choice.
 Just set parameters and go!
@@ -312,6 +319,11 @@ class Simulator:
 
     #instead of coordinates these will work on elements of class megastructure
     def monte_carlo_multi(self, frame): 
+        """IMPORTANT NOTICE
+        This module uses a C++ wrapper for the in_or_out function. This helps the coderun much faster. If there's
+        compatibility issues or any such errors and you need a pure python equivalent uncomment the 'distarr' line in 
+        the else part and comment out the previous line for a pure python equivalent!
+        """
         dists=[]
         
         #start_time=time.time()
